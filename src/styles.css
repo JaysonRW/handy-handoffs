@@ -66,11 +66,11 @@
   --radius: 0.75rem;
 
   /* Paleta serena e personalizada baseada em #beb1aa e #8e786c */
-  --background: oklch(0.98 0.005 250);          /* branco suave */
+  --background: oklch(0.94 0.01 250);           /* branco suave com tom bege mais perceptível */
   --foreground: oklch(0.18 0.02 260);           /* cinza escuro suave */
-  --surface: oklch(0.97 0.006 250);             /* superfície clara */
-  --surface-2: oklch(0.95 0.008 250);            /* superfície secundária */
-  --card: oklch(0.98 0.005 250);                /* cartão branco suave */
+  --surface: oklch(0.96 0.008 250);             /* superfície clara */
+  --surface-2: oklch(0.93 0.012 250);           /* superfície secundária */
+  --card: oklch(1 0 250);                       /* cartão branco puro para máximo contraste */
   --card-foreground: oklch(0.18 0.02 260);      /* texto escuro */
   --popover: oklch(0.96 0.008 250);
   --popover-foreground: oklch(0.18 0.02 260);
@@ -96,7 +96,7 @@
   --warning: oklch(0.78 0.14 75);               /* laranja suave */
   --warning-foreground: oklch(0.98 0.005 250);
 
-  --border: oklch(0.88 0.015 250);              /* borda clara */
+  --border: oklch(0.85 0.02 250);               /* borda mais definida */
   --input: oklch(0.94 0.01 250);                /* input claro */
   --ring: oklch(0.62 0.04 70);                  /* anel marrom suave */
 
@@ -128,13 +128,16 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
   }
   body {
     background-image: 
-      radial-gradient(1200px 600px at 100% -10%, oklch(0.85 0.03 70 / 0.12), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, oklch(0.62 0.04 70 / 0.06), transparent 60%);
+      radial-gradient(1200px 600px at 100% -10%, oklch(0.85 0.03 70 / 0.25), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, oklch(0.62 0.04 70 / 0.15), transparent 60%);
     background-attachment: fixed;
     background-color: var(--color-background);
+    background-repeat: no-repeat;
+    min-height: 100vh;
   }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
 }
