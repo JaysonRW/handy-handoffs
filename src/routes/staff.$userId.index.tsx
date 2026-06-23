@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus, ArrowRight, Inbox, ListChecks, CheckCircle2, CloudOff } from "lucide-react";
 import { StaffShell } from "@/components/layout/StaffShell";
 import { getUser } from "@/features/users/data";
-import { selectVisibleForStaff, useTasksStore } from "@/features/tasks/store";
+import { useTasksStore } from "@/features/tasks/store";
 import { TaskCard } from "@/features/tasks/components/TaskCard";
 
 export const Route = createFileRoute("/staff/$userId/")({
@@ -13,7 +13,8 @@ export const Route = createFileRoute("/staff/$userId/")({
 function StaffHome() {
   const { userId } = Route.useParams();
   const user = getUser(userId)!;
-  const tasks = useTasksStore(selectVisibleForStaff(userId));
+  const allTasks = useTasksStore((s) => s.tasks);
+  const tasks = allTasks.filter((task) => task.assigneeId === userId || task.createdById === userId);
 
   const newQ = tasks.filter((t) => t.status === "NEW");
   const doing = tasks.filter((t) => t.status === "DOING");

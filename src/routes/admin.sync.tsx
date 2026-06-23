@@ -3,7 +3,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { CloudOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { useSyncStore } from "@/features/sync/store";
-import { selectPendingSync, useTasksStore } from "@/features/tasks/store";
+import { useTasksStore } from "@/features/tasks/store";
 import { simulateOffline, triggerManualSync } from "@/features/sync/runtime";
 
 export const Route = createFileRoute("/admin/sync")({
@@ -15,7 +15,8 @@ function SyncPage() {
   const online = useSyncStore((s) => s.online);
   const syncing = useSyncStore((s) => s.syncing);
   const history = useSyncStore((s) => s.history);
-  const pending = useTasksStore(selectPendingSync);
+  const tasks = useTasksStore((s) => s.tasks);
+  const pending = tasks.filter((task) => !task.synced);
 
   return (
     <AdminShell

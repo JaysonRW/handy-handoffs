@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { StaffShell } from "@/components/layout/StaffShell";
 import { getUser } from "@/features/users/data";
-import { selectVisibleForStaff, useTasksStore } from "@/features/tasks/store";
+import { useTasksStore } from "@/features/tasks/store";
 import { TaskFiltersBar, useFilteredTasks, useTaskFiltersState } from "@/features/tasks/components/TaskFilters";
 import { TaskCard } from "@/features/tasks/components/TaskCard";
 
@@ -13,7 +13,8 @@ export const Route = createFileRoute("/staff/$userId/tasks")({
 function StaffTasks() {
   const { userId } = Route.useParams();
   const user = getUser(userId)!;
-  const tasks = useTasksStore(selectVisibleForStaff(userId));
+  const allTasks = useTasksStore((s) => s.tasks);
+  const tasks = allTasks.filter((task) => task.assigneeId === userId || task.createdById === userId);
   const [filters, setFilters] = useTaskFiltersState();
   const filtered = useFilteredTasks(tasks, filters);
 

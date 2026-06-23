@@ -3,7 +3,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { CloudOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { StaffShell } from "@/components/layout/StaffShell";
 import { useSyncStore } from "@/features/sync/store";
-import { selectByCreator, useTasksStore } from "@/features/tasks/store";
+import { useTasksStore } from "@/features/tasks/store";
 import { simulateOffline, triggerManualSync } from "@/features/sync/runtime";
 
 export const Route = createFileRoute("/staff/$userId/sync")({
@@ -16,7 +16,8 @@ function StaffSync() {
   const online = useSyncStore((s) => s.online);
   const syncing = useSyncStore((s) => s.syncing);
   const history = useSyncStore((s) => s.history);
-  const myTasks = useTasksStore(selectByCreator(userId));
+  const allTasks = useTasksStore((s) => s.tasks);
+  const myTasks = allTasks.filter((task) => task.createdById === userId);
   const pending = myTasks.filter((t) => !t.synced);
 
   return (

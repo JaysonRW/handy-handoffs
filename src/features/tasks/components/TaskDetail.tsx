@@ -8,11 +8,7 @@ import { StatusBadge } from "./StatusBadge";
 import { Avatar } from "@/features/users/Avatar";
 import { getBlock, getFlat } from "@/features/blocks/data";
 import { USERS, getUser, usersByRole } from "@/features/users/data";
-import {
-  selectActivityForTask,
-  selectCommentsForTask,
-  useTasksStore,
-} from "@/features/tasks/store";
+import { useTasksStore } from "@/features/tasks/store";
 
 export function TaskDetail({
   task,
@@ -33,8 +29,10 @@ export function TaskDetail({
   const addComment = useTasksStore((s) => s.addComment);
   const addPhoto = useTasksStore((s) => s.addPhoto);
 
-  const comments = useTasksStore(selectCommentsForTask(task.id));
-  const activity = useTasksStore(selectActivityForTask(task.id));
+  const allComments = useTasksStore((s) => s.comments);
+  const allActivity = useTasksStore((s) => s.activity);
+  const comments = allComments.filter((comment) => comment.taskId === task.id);
+  const activity = allActivity.filter((entry) => entry.taskId === task.id);
 
   const block = getBlock(task.blockId);
   const flat = getFlat(task.blockId, task.flatId);

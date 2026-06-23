@@ -6,13 +6,13 @@ import { PriorityBadge } from "./PriorityBadge";
 import { StatusBadge } from "./StatusBadge";
 import { Avatar } from "@/features/users/Avatar";
 import { getBlock, getFlat } from "@/features/blocks/data";
-import { useTasksStore, selectCommentsForTask } from "@/features/tasks/store";
+import { useTasksStore } from "@/features/tasks/store";
 import { cn } from "@/lib/utils";
 
 export function TaskCard({ task, href, compact = false }: { task: Task; href: string; compact?: boolean }) {
   const block = getBlock(task.blockId);
   const flat = getFlat(task.blockId, task.flatId);
-  const comments = useTasksStore(selectCommentsForTask(task.id)).length;
+  const comments = useTasksStore((s) => s.comments.filter((comment) => comment.taskId === task.id).length);
   const photos = (task.photo ? 1 : 0) + (task.extraPhotos?.length ?? 0);
 
   return (

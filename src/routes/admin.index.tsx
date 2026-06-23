@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, CloudOff, Inbox, ListChecks, CheckCircle2, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AdminShell } from "@/components/layout/AdminShell";
-import { useTasksStore, selectPendingSync } from "@/features/tasks/store";
+import { useTasksStore } from "@/features/tasks/store";
 import { SyncIndicator } from "@/features/sync/SyncIndicator";
 import { PriorityBadge } from "@/features/tasks/components/PriorityBadge";
 import { StatusBadge } from "@/features/tasks/components/StatusBadge";
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/admin/")({
 function AdminOverview() {
   const tasks = useTasksStore((s) => s.tasks);
   const activity = useTasksStore((s) => s.activity);
-  const pending = useTasksStore(selectPendingSync);
+  const pending = tasks.filter((task) => !task.synced);
 
   const counts = {
     newQ: tasks.filter((t) => t.status === "NEW").length,

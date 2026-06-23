@@ -21,7 +21,7 @@ interface SyncState {
 export const useSyncStore = create<SyncState>()(
   persist(
     (set) => ({
-      online: typeof navigator !== "undefined" ? navigator.onLine : true,
+      online: true,
       syncing: false,
       history: [],
       setOnline: (online) => set({ online }),

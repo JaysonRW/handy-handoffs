@@ -199,7 +199,7 @@ export const useTasksStore = create<TasksState>()(
       },
     }),
     {
-      name: "pmtms.tasks.v1",
+      name: "pmtms.tasks.v2",
       onRehydrateStorage: () => (state) => {
         if (state && state.tasks.length === 0) {
           const seeded = seedTasks();
