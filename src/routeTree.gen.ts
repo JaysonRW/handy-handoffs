@@ -9,38 +9,228 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StaffIndexRouteImport } from './routes/staff.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as StaffUserIdRouteImport } from './routes/staff.$userId'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
+import { Route as AdminSyncRouteImport } from './routes/admin.sync'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminBlocksRouteImport } from './routes/admin.blocks'
+import { Route as StaffUserIdIndexRouteImport } from './routes/staff.$userId.index'
+import { Route as StaffUserIdTasksRouteImport } from './routes/staff.$userId.tasks'
+import { Route as StaffUserIdSyncRouteImport } from './routes/staff.$userId.sync'
+import { Route as StaffUserIdNewRouteImport } from './routes/staff.$userId.new'
+import { Route as AdminTasksTaskIdRouteImport } from './routes/admin.tasks.$taskId'
+import { Route as StaffUserIdTasksTaskIdRouteImport } from './routes/staff.$userId.tasks.$taskId'
 
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StaffIndexRoute = StaffIndexRouteImport.update({
+  id: '/staff/',
+  path: '/staff/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const StaffUserIdRoute = StaffUserIdRouteImport.update({
+  id: '/staff/$userId',
+  path: '/staff/$userId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTasksRoute = AdminTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSyncRoute = AdminSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBlocksRoute = AdminBlocksRouteImport.update({
+  id: '/blocks',
+  path: '/blocks',
+  getParentRoute: () => AdminRoute,
+} as any)
+const StaffUserIdIndexRoute = StaffUserIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => StaffUserIdRoute,
+} as any)
+const StaffUserIdTasksRoute = StaffUserIdTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => StaffUserIdRoute,
+} as any)
+const StaffUserIdSyncRoute = StaffUserIdSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => StaffUserIdRoute,
+} as any)
+const StaffUserIdNewRoute = StaffUserIdNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => StaffUserIdRoute,
+} as any)
+const AdminTasksTaskIdRoute = AdminTasksTaskIdRouteImport.update({
+  id: '/$taskId',
+  path: '/$taskId',
+  getParentRoute: () => AdminTasksRoute,
+} as any)
+const StaffUserIdTasksTaskIdRoute = StaffUserIdTasksTaskIdRouteImport.update({
+  id: '/$taskId',
+  path: '/$taskId',
+  getParentRoute: () => StaffUserIdTasksRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/admin/blocks': typeof AdminBlocksRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/sync': typeof AdminSyncRoute
+  '/admin/tasks': typeof AdminTasksRouteWithChildren
+  '/admin/users': typeof AdminUsersRoute
+  '/staff/$userId': typeof StaffUserIdRouteWithChildren
+  '/admin/': typeof AdminIndexRoute
+  '/staff/': typeof StaffIndexRoute
+  '/admin/tasks/$taskId': typeof AdminTasksTaskIdRoute
+  '/staff/$userId/new': typeof StaffUserIdNewRoute
+  '/staff/$userId/sync': typeof StaffUserIdSyncRoute
+  '/staff/$userId/tasks': typeof StaffUserIdTasksRouteWithChildren
+  '/staff/$userId/': typeof StaffUserIdIndexRoute
+  '/staff/$userId/tasks/$taskId': typeof StaffUserIdTasksTaskIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin/blocks': typeof AdminBlocksRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/sync': typeof AdminSyncRoute
+  '/admin/tasks': typeof AdminTasksRouteWithChildren
+  '/admin/users': typeof AdminUsersRoute
+  '/admin': typeof AdminIndexRoute
+  '/staff': typeof StaffIndexRoute
+  '/admin/tasks/$taskId': typeof AdminTasksTaskIdRoute
+  '/staff/$userId/new': typeof StaffUserIdNewRoute
+  '/staff/$userId/sync': typeof StaffUserIdSyncRoute
+  '/staff/$userId/tasks': typeof StaffUserIdTasksRouteWithChildren
+  '/staff/$userId': typeof StaffUserIdIndexRoute
+  '/staff/$userId/tasks/$taskId': typeof StaffUserIdTasksTaskIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/admin/blocks': typeof AdminBlocksRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/sync': typeof AdminSyncRoute
+  '/admin/tasks': typeof AdminTasksRouteWithChildren
+  '/admin/users': typeof AdminUsersRoute
+  '/staff/$userId': typeof StaffUserIdRouteWithChildren
+  '/admin/': typeof AdminIndexRoute
+  '/staff/': typeof StaffIndexRoute
+  '/admin/tasks/$taskId': typeof AdminTasksTaskIdRoute
+  '/staff/$userId/new': typeof StaffUserIdNewRoute
+  '/staff/$userId/sync': typeof StaffUserIdSyncRoute
+  '/staff/$userId/tasks': typeof StaffUserIdTasksRouteWithChildren
+  '/staff/$userId/': typeof StaffUserIdIndexRoute
+  '/staff/$userId/tasks/$taskId': typeof StaffUserIdTasksTaskIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/admin/blocks'
+    | '/admin/login'
+    | '/admin/sync'
+    | '/admin/tasks'
+    | '/admin/users'
+    | '/staff/$userId'
+    | '/admin/'
+    | '/staff/'
+    | '/admin/tasks/$taskId'
+    | '/staff/$userId/new'
+    | '/staff/$userId/sync'
+    | '/staff/$userId/tasks'
+    | '/staff/$userId/'
+    | '/staff/$userId/tasks/$taskId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/admin/blocks'
+    | '/admin/login'
+    | '/admin/sync'
+    | '/admin/tasks'
+    | '/admin/users'
+    | '/admin'
+    | '/staff'
+    | '/admin/tasks/$taskId'
+    | '/staff/$userId/new'
+    | '/staff/$userId/sync'
+    | '/staff/$userId/tasks'
+    | '/staff/$userId'
+    | '/staff/$userId/tasks/$taskId'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/admin/blocks'
+    | '/admin/login'
+    | '/admin/sync'
+    | '/admin/tasks'
+    | '/admin/users'
+    | '/staff/$userId'
+    | '/admin/'
+    | '/staff/'
+    | '/admin/tasks/$taskId'
+    | '/staff/$userId/new'
+    | '/staff/$userId/sync'
+    | '/staff/$userId/tasks'
+    | '/staff/$userId/'
+    | '/staff/$userId/tasks/$taskId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  StaffUserIdRoute: typeof StaffUserIdRouteWithChildren
+  StaffIndexRoute: typeof StaffIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +238,174 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staff/': {
+      id: '/staff/'
+      path: '/staff'
+      fullPath: '/staff/'
+      preLoaderRoute: typeof StaffIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/staff/$userId': {
+      id: '/staff/$userId'
+      path: '/staff/$userId'
+      fullPath: '/staff/$userId'
+      preLoaderRoute: typeof StaffUserIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tasks': {
+      id: '/admin/tasks'
+      path: '/tasks'
+      fullPath: '/admin/tasks'
+      preLoaderRoute: typeof AdminTasksRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/sync': {
+      id: '/admin/sync'
+      path: '/sync'
+      fullPath: '/admin/sync'
+      preLoaderRoute: typeof AdminSyncRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/blocks': {
+      id: '/admin/blocks'
+      path: '/blocks'
+      fullPath: '/admin/blocks'
+      preLoaderRoute: typeof AdminBlocksRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/staff/$userId/': {
+      id: '/staff/$userId/'
+      path: '/'
+      fullPath: '/staff/$userId/'
+      preLoaderRoute: typeof StaffUserIdIndexRouteImport
+      parentRoute: typeof StaffUserIdRoute
+    }
+    '/staff/$userId/tasks': {
+      id: '/staff/$userId/tasks'
+      path: '/tasks'
+      fullPath: '/staff/$userId/tasks'
+      preLoaderRoute: typeof StaffUserIdTasksRouteImport
+      parentRoute: typeof StaffUserIdRoute
+    }
+    '/staff/$userId/sync': {
+      id: '/staff/$userId/sync'
+      path: '/sync'
+      fullPath: '/staff/$userId/sync'
+      preLoaderRoute: typeof StaffUserIdSyncRouteImport
+      parentRoute: typeof StaffUserIdRoute
+    }
+    '/staff/$userId/new': {
+      id: '/staff/$userId/new'
+      path: '/new'
+      fullPath: '/staff/$userId/new'
+      preLoaderRoute: typeof StaffUserIdNewRouteImport
+      parentRoute: typeof StaffUserIdRoute
+    }
+    '/admin/tasks/$taskId': {
+      id: '/admin/tasks/$taskId'
+      path: '/$taskId'
+      fullPath: '/admin/tasks/$taskId'
+      preLoaderRoute: typeof AdminTasksTaskIdRouteImport
+      parentRoute: typeof AdminTasksRoute
+    }
+    '/staff/$userId/tasks/$taskId': {
+      id: '/staff/$userId/tasks/$taskId'
+      path: '/$taskId'
+      fullPath: '/staff/$userId/tasks/$taskId'
+      preLoaderRoute: typeof StaffUserIdTasksTaskIdRouteImport
+      parentRoute: typeof StaffUserIdTasksRoute
+    }
   }
 }
 
+interface AdminTasksRouteChildren {
+  AdminTasksTaskIdRoute: typeof AdminTasksTaskIdRoute
+}
+
+const AdminTasksRouteChildren: AdminTasksRouteChildren = {
+  AdminTasksTaskIdRoute: AdminTasksTaskIdRoute,
+}
+
+const AdminTasksRouteWithChildren = AdminTasksRoute._addFileChildren(
+  AdminTasksRouteChildren,
+)
+
+interface AdminRouteChildren {
+  AdminBlocksRoute: typeof AdminBlocksRoute
+  AdminLoginRoute: typeof AdminLoginRoute
+  AdminSyncRoute: typeof AdminSyncRoute
+  AdminTasksRoute: typeof AdminTasksRouteWithChildren
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminBlocksRoute: AdminBlocksRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  AdminSyncRoute: AdminSyncRoute,
+  AdminTasksRoute: AdminTasksRouteWithChildren,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface StaffUserIdTasksRouteChildren {
+  StaffUserIdTasksTaskIdRoute: typeof StaffUserIdTasksTaskIdRoute
+}
+
+const StaffUserIdTasksRouteChildren: StaffUserIdTasksRouteChildren = {
+  StaffUserIdTasksTaskIdRoute: StaffUserIdTasksTaskIdRoute,
+}
+
+const StaffUserIdTasksRouteWithChildren =
+  StaffUserIdTasksRoute._addFileChildren(StaffUserIdTasksRouteChildren)
+
+interface StaffUserIdRouteChildren {
+  StaffUserIdNewRoute: typeof StaffUserIdNewRoute
+  StaffUserIdSyncRoute: typeof StaffUserIdSyncRoute
+  StaffUserIdTasksRoute: typeof StaffUserIdTasksRouteWithChildren
+  StaffUserIdIndexRoute: typeof StaffUserIdIndexRoute
+}
+
+const StaffUserIdRouteChildren: StaffUserIdRouteChildren = {
+  StaffUserIdNewRoute: StaffUserIdNewRoute,
+  StaffUserIdSyncRoute: StaffUserIdSyncRoute,
+  StaffUserIdTasksRoute: StaffUserIdTasksRouteWithChildren,
+  StaffUserIdIndexRoute: StaffUserIdIndexRoute,
+}
+
+const StaffUserIdRouteWithChildren = StaffUserIdRoute._addFileChildren(
+  StaffUserIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  StaffUserIdRoute: StaffUserIdRouteWithChildren,
+  StaffIndexRoute: StaffIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

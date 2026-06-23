@@ -1,0 +1,71 @@
+export type Role = "MASTER_ADMIN" | "CARETAKER" | "CLEANER";
+
+export type TaskStatus = "NEW" | "DOING" | "DONE";
+export type Priority = "P1" | "P2" | "P3" | null;
+
+export type ProblemCategory =
+  | "Plumbing"
+  | "Electrical"
+  | "HVAC"
+  | "Structural"
+  | "Appliance"
+  | "Lighting"
+  | "Other";
+
+export type ComplaintCategory =
+  | "Cleaning"
+  | "Noise"
+  | "Waste"
+  | "Pest"
+  | "Common Area"
+  | "Safety"
+  | "Other";
+
+export interface Comment {
+  id: string;
+  taskId: string;
+  authorId: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface ActivityEntry {
+  id: string;
+  taskId: string;
+  actorId: string;
+  type:
+    | "created"
+    | "status_changed"
+    | "priority_set"
+    | "assigned"
+    | "reassigned"
+    | "comment"
+    | "photo_added"
+    | "reopened"
+    | "accepted"
+    | "synced";
+  message: string;
+  meta?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  photo?: string; // data URL
+  extraPhotos?: string[];
+  blockId: string;
+  flatId: string;
+  problemCategory?: ProblemCategory;
+  complaintCategory?: ComplaintCategory;
+  status: TaskStatus;
+  priority: Priority;
+  createdById: string;
+  assigneeId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** offline-first: false until synced to "server" */
+  synced: boolean;
+  syncedAt?: string;
+}
