@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { CloudOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { StaffShell } from "@/components/layout/StaffShell";
@@ -18,7 +19,8 @@ function StaffSync() {
   const online = useSyncStore((s) => s.online);
   const syncing = useSyncStore((s) => s.syncing);
   const history = useSyncStore((s) => s.history);
-  const myTasks = useTasksStore((s) => selectVisibleForStaff(userId)(s));
+  const allTasks = useTasksStore((s) => s.tasks);
+  const myTasks = useMemo(() => selectVisibleForStaff(userId)({ tasks: allTasks } as any), [allTasks, userId]);
   const pending = myTasks.filter((t) => !t.synced);
 
   return (

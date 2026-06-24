@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { Plus, ArrowRight, Inbox, ListChecks, CheckCircle2, CloudOff } from "lucide-react";
 import { StaffShell } from "@/components/layout/StaffShell";
 import { canCreateTaskFromStaffPortal, canSeeCreatedTasks, getUser } from "@/features/users/data";
@@ -13,7 +14,8 @@ export const Route = createFileRoute("/staff/$userId/")({
 function StaffHome() {
   const { userId } = Route.useParams();
   const user = getUser(userId)!;
-  const tasks = useTasksStore((s) => selectVisibleForStaff(userId)(s));
+  const allTasks = useTasksStore((s) => s.tasks);
+  const tasks = useMemo(() => selectVisibleForStaff(userId)({ tasks: allTasks } as any), [allTasks, userId]);
   const canCreate = canCreateTaskFromStaffPortal(user.role);
   const canSeeCreated = canSeeCreatedTasks(user.role);
 

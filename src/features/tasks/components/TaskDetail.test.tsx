@@ -146,7 +146,10 @@ describe("TaskDetail permissions", () => {
     expect(screen.getByText(/Joao - Falcon/)).not.toBeNull();
     expect(screen.getByText(/via resident portal/)).not.toBeNull();
 
-    fireEvent.change(screen.getByDisplayValue("Melba Costa"), {
+    const assigneeSelect = screen.getByRole("combobox") as HTMLSelectElement;
+    expect(assigneeSelect.value).toBe("u_clean_1");
+
+    fireEvent.change(assigneeSelect, {
       target: { value: "u_care_1" },
     });
     fireEvent.click(screen.getByRole("button", { name: /accept completion/i }));

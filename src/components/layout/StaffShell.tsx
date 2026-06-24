@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Home, Plus, ListChecks, History, LogOut, CloudOff } from "lucide-react";
 import { Avatar } from "@/features/users/Avatar";
@@ -22,10 +23,15 @@ export function StaffShell({
   const user = getUser(userId);
   const canCreate = user ? canCreateTaskFromStaffPortal(user.role) : false;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const pending = useTasksStore(
-    (s) => selectPendingSync(s).filter((t) => t.createdById === userId).length,
+  const allTasks = useTasksStore((s) => s.tasks);
+  const pending = useMemo(
+    () => selectPendingSync({ tasks: allTasks } as any).filter((t) => t.createdById === userId).length,
+    [allTasks, userId],
   );
-  const total = useTasksStore((s) => selectVisibleForStaff(userId)(s).length);
+  const total = useMemo(
+    () => selectVisibleForStaff(userId)({ tasks: allTasks } as any).length,
+    [allTasks, userId],
+  );
 
   const tabs = [
     { to: `/staff/${userId}`, label: "Home", icon: Home, exact: true },
