@@ -67,7 +67,7 @@ function AdminOverview() {
                           <PriorityBadge priority={t.priority} short />
                           <StatusBadge status={t.status} />
                           <span className="chip">{block?.name} · {flat?.label}</span>
-                          {!t.synced && <span className="chip border-accent/40 bg-accent/15 text-accent"><CloudOff className="size-3" />Pending</span>}
+                          {!t.synced && <span className="chip border-accent/40 bg-accent/15 text-accent-foreground"><CloudOff className="size-3" />Pending</span>}
                         </div>
                         <p className="mt-1 text-sm font-medium line-clamp-1">{t.title}</p>
                       </div>
@@ -119,7 +119,7 @@ function AdminOverview() {
 function Stat({ label, value, icon: Icon, tone, href }: { label: string; value: number; icon: any; tone: "primary" | "accent" | "success" | "danger"; href: string }) {
   const toneCls = {
     primary: "text-primary bg-primary/15 border-primary/30",
-    accent: "text-accent bg-accent/15 border-accent/30",
+    accent: "text-accent-foreground bg-accent/15 border-accent/30",
     success: "text-success bg-success/15 border-success/30",
     danger: "text-[color:var(--color-p1)] bg-[color:var(--color-p1)]/15 border-[color:var(--color-p1)]/30",
   }[tone];

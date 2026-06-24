@@ -27,7 +27,7 @@ function Index() {
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Operations</div>
           </div>
         </div>
-        <span className="chip border-accent/40 bg-accent/10 text-accent"><CloudOff className="size-3" /> Works offline</span>
+        <span className="chip border-accent/40 bg-accent/10 text-accent-foreground"><CloudOff className="size-3" /> Works offline</span>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 pb-24">
@@ -72,7 +72,7 @@ function Index() {
             className="surface-card group relative overflow-hidden p-6 transition hover:border-primary/50 hover:bg-surface-2 focus-ring"
           >
             <div className="flex items-center gap-3">
-              <div className="size-12 grid place-items-center rounded-lg bg-accent/15 text-accent"><Wrench className="size-6" /></div>
+              <div className="size-12 grid place-items-center rounded-lg bg-accent/15 text-accent-foreground"><Wrench className="size-6" /></div>
               <div>
                 <h2 className="text-lg font-bold">Field staff portal</h2>
                 <p className="text-xs text-muted-foreground">Caretakers & cleaners — no login required</p>
@@ -84,7 +84,7 @@ function Index() {
               ))}
             </div>
             <p className="mt-3 text-xs text-muted-foreground">{caretakers.length} caretakers · {cleaners.length} cleaners</p>
-            <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-accent">
+            <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">
               Pick your profile <ArrowRight className="size-4 transition group-hover:translate-x-1" />
             </div>
           </Link>

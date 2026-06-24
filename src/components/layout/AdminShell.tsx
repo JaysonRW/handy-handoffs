@@ -55,7 +55,7 @@ export function AdminShell({ children, title, subtitle, actions }: { children: R
                 <Icon className="size-4" />
                 <span className="flex-1">{it.label}</span>
                 {it.to === "/admin/tasks" && pending > 0 && (
-                  <span className="chip border-accent/40 bg-accent/15 text-accent">
+                  <span className="chip border-accent/40 bg-accent/15 text-accent-foreground">
                     <CloudOff className="size-3" /> {pending}
                   </span>
                 )}

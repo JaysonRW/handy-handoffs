@@ -30,7 +30,7 @@ function BlocksPage() {
                   return (
                     <span
                       key={f.id}
-                      className={`px-1.5 py-1 rounded text-[11px] font-mono border ${has ? "border-accent/40 bg-accent/10 text-accent" : "border-border bg-surface-2 text-muted-foreground"}`}
+                      className={`px-1.5 py-1 rounded text-[11px] font-mono border ${has ? "border-accent/40 bg-accent/10 text-accent-foreground" : "border-border bg-surface-2 text-muted-foreground"}`}
                       title={`Flat ${f.label}${has ? " · has open task" : ""}`}
                     >
                       {f.label}

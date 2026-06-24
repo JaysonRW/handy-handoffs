@@ -90,7 +90,7 @@ export function StaffShell({
                 )}
                 <span className={cn(t.primary && "text-foreground")}>{t.label}</span>
                 {t.badge && t.badge > 0 ? (
-                  <span className="absolute top-2 right-1/4 chip border-accent/40 bg-accent/20 text-accent">
+                  <span className="absolute top-2 right-1/4 chip border-accent/40 bg-accent/20 text-accent-foreground">
                     {t.to.endsWith("/sync") ? <CloudOff className="size-3" /> : null}
                     {t.badge}
                   </span>

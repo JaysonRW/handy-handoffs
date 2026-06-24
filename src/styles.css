@@ -82,7 +82,7 @@
   --secondary-foreground: oklch(0.25 0.02 260); /* cinza médio */
 
   --muted: oklch(0.94 0.01 250);                /* cinza claro */
-  --muted-foreground: oklch(0.55 0.02 260);     /* cinza médio */
+  --muted-foreground: oklch(0.5 0.02 260);      /* cinza médio (mais legível) */
 
   --accent: oklch(0.85 0.03 70);                /* #beb1aa - bege suave */
   --accent-foreground: oklch(0.25 0.02 260);    /* cinza escuro */
@@ -110,13 +110,37 @@
   --sidebar-primary-foreground: oklch(0.98 0.005 250);
   --sidebar-accent: oklch(0.92 0.015 250);      /* cinza muito claro */
   --sidebar-accent-foreground: oklch(0.25 0.02 260);
-  --sidebar-border: oklch(0.88 0.015 250);      /* borda clara */
+  --sidebar-border: oklch(0.85 0.02 250);       /* borda mais definida */
   --sidebar-ring: oklch(0.62 0.04 70);          /* anel marrom suave */
 }
 
 .dark {
-  --background: oklch(0.18 0.02 260);
-  --foreground: oklch(0.98 0.005 250);
+  --background: oklch(0.16 0.02 260);
+  --foreground: oklch(0.96 0.01 250);
+  --surface: oklch(0.2 0.02 260);
+  --surface-2: oklch(0.24 0.02 260);
+  --card: oklch(0.2 0.02 260);
+  --card-foreground: oklch(0.96 0.01 250);
+  --popover: oklch(0.22 0.02 260);
+  --popover-foreground: oklch(0.96 0.01 250);
+
+  --secondary: oklch(0.24 0.02 260);
+  --secondary-foreground: oklch(0.96 0.01 250);
+
+  --muted: oklch(0.24 0.02 260);
+  --muted-foreground: oklch(0.78 0.02 260);
+
+  --accent: oklch(0.3 0.03 70);
+  --accent-foreground: oklch(0.96 0.01 250);
+
+  --border: oklch(0.32 0.02 260);
+  --input: oklch(0.26 0.02 260);
+
+  --sidebar: oklch(0.18 0.02 260);
+  --sidebar-foreground: oklch(0.96 0.01 250);
+  --sidebar-accent: oklch(0.24 0.02 260);
+  --sidebar-accent-foreground: oklch(0.96 0.01 250);
+  --sidebar-border: oklch(0.32 0.02 260);
 }
 
 @layer base {
@@ -144,6 +168,7 @@
 
 @utility surface-card {
   background-color: var(--color-card);
+  color: var(--color-card-foreground);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 1px 3px 0 oklch(0 0 0 / 0.1);

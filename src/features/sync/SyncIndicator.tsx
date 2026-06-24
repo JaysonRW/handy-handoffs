@@ -16,7 +16,7 @@ export function SyncIndicator({ className }: { className?: string }) {
   }
   if (!online) {
     return (
-      <span className={cn("chip border-accent/40 bg-accent/10 text-accent", className)}>
+      <span className={cn("chip border-accent/40 bg-accent/10 text-accent-foreground", className)}>
         <CloudOff className="size-3" />
         Offline
       </span>

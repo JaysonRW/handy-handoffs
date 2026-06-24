@@ -85,7 +85,7 @@ export function TaskForm({ creatorId, redirectTo }: { creatorId: string; redirec
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-4">
       {!online && (
-        <div className="surface-card border-accent/40 bg-accent/5 p-3 text-sm text-accent">
+        <div className="surface-card border-accent/40 bg-accent/5 p-3 text-sm text-accent-foreground">
           You're offline. The task will be saved locally and synced automatically when you're back online.
         </div>
       )}
@@ -211,7 +211,7 @@ function Section({ title, required, hint, children }: { title: string; required?
     <section className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold">
-          {title} {required && <span className="text-accent">*</span>}
+          {title} {required && <span className="text-primary">*</span>}
         </h2>
         {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
       </div>

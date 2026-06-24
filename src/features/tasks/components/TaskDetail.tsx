@@ -57,7 +57,7 @@ export function TaskDetail({
             <span className="chip">{block?.name} · Flat {flat?.label}</span>
             {task.problemCategory && <span className="chip">{task.problemCategory}</span>}
             {task.complaintCategory && <span className="chip">{task.complaintCategory}</span>}
-            {!task.synced && <span className="chip border-accent/40 bg-accent/15 text-accent">Pending sync</span>}
+            {!task.synced && <span className="chip border-accent/40 bg-accent/15 text-accent-foreground">Pending sync</span>}
           </div>
           <h2 className="mt-3 text-2xl font-bold tracking-tight">{task.title}</h2>
           <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>

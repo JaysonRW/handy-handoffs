@@ -26,7 +26,7 @@ function StaffSync() {
         <div className="surface-card p-4 flex items-center justify-between gap-3">
           <div>
             <div className="text-sm font-bold inline-flex items-center gap-2">
-              {online ? <Wifi className="size-4 text-success" /> : <WifiOff className="size-4 text-accent" />}
+              {online ? <Wifi className="size-4 text-success" /> : <WifiOff className="size-4 text-primary" />}
               {online ? "Online" : "Offline"}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -58,7 +58,7 @@ function StaffSync() {
             <ul className="divide-y divide-border">
               {pending.map((t) => (
                 <li key={t.id} className="py-2 flex items-center gap-2 text-sm">
-                  <CloudOff className="size-4 text-accent" />
+                  <CloudOff className="size-4 text-primary" />
                   <span className="flex-1 truncate">{t.title}</span>
                   <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(t.createdAt), { addSuffix: true })}</span>
                 </li>

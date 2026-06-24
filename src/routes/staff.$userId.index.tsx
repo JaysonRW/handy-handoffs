@@ -70,7 +70,7 @@ function StaffHome() {
 function Mini({ label, value, icon: Icon, tone }: { label: string; value: number; icon: any; tone?: "accent" }) {
   return (
     <div className="surface-card p-3 flex flex-col gap-1">
-      <Icon className={`size-4 ${tone === "accent" ? "text-accent" : "text-primary"}`} />
+      <Icon className={`size-4 ${tone === "accent" ? "text-warning" : "text-primary"}`} />
       <div className="text-2xl font-black tabular-nums leading-tight">{value}</div>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
     </div>

@@ -35,7 +35,7 @@ export function TaskTable({ tasks, buildHref }: { tasks: Task[]; buildHref: (t: 
                 <tr key={t.id} className="border-b border-border/60 last:border-0 hover:bg-surface-2/60">
                   <td className="px-4 py-3">
                     <Link to={buildHref(t) as any} className="font-medium hover:text-primary inline-flex items-center gap-2">
-                      {!t.synced && <CloudOff className="size-3 text-accent" />}
+                      {!t.synced && <CloudOff className="size-3 text-primary" />}
                       <span className="line-clamp-1">{t.title}</span>
                     </Link>
                     <div className="text-xs text-muted-foreground line-clamp-1">{t.description}</div>

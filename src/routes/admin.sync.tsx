@@ -49,7 +49,7 @@ function SyncPage() {
             <ul className="divide-y divide-border">
               {pending.map((t) => (
                 <li key={t.id} className="py-2 flex items-center gap-3 text-sm">
-                  <CloudOff className="size-4 text-accent" />
+                  <CloudOff className="size-4 text-primary" />
                   <span className="font-medium flex-1 truncate">{t.title}</span>
                   <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(t.createdAt), { addSuffix: true })}</span>
                 </li>
