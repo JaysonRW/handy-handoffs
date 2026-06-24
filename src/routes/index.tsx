@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Building2, ShieldCheck, Wrench, CloudOff } from "lucide-react";
+import { ArrowRight, Building2, ShieldCheck, Wrench, CloudOff, House } from "lucide-react";
 import { usersByRole } from "@/features/users/data";
 import { Avatar } from "@/features/users/Avatar";
 
@@ -43,7 +43,7 @@ function Index() {
           </p>
         </section>
 
-        <section className="grid gap-5 md:grid-cols-2">
+        <section className="grid gap-5 md:grid-cols-3">
           <Link
             to="/admin/login"
             className="surface-card group relative overflow-hidden p-6 transition hover:border-primary/50 hover:bg-surface-2 focus-ring"
@@ -86,6 +86,28 @@ function Index() {
             <p className="mt-3 text-xs text-muted-foreground">{caretakers.length} caretakers · {cleaners.length} cleaners</p>
             <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">
               Pick your profile <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+            </div>
+          </Link>
+
+          <Link
+            to="/report/new"
+            className="surface-card group relative overflow-hidden p-6 transition hover:border-primary/50 hover:bg-surface-2 focus-ring"
+          >
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-accent/25 to-transparent pointer-events-none" />
+            <div className="flex items-center gap-3">
+              <div className="size-12 grid place-items-center rounded-lg bg-primary/12 text-primary"><House className="size-6" /></div>
+              <div>
+                <h2 className="text-lg font-bold">Resident report</h2>
+                <p className="text-xs text-muted-foreground">Public access for residents to log a new issue</p>
+              </div>
+            </div>
+            <ul className="mt-5 text-sm text-muted-foreground space-y-1">
+              <li>· No login required</li>
+              <li>· Share the block and your name</li>
+              <li>· Admin triages and assigns later</li>
+            </ul>
+            <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+              Create report <ArrowRight className="size-4 transition group-hover:translate-x-1" />
             </div>
           </Link>
         </section>

@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Camera, Loader2, X } from "lucide-react";
 import { BLOCKS } from "@/features/blocks/data";
 import type { ComplaintCategory, ProblemCategory } from "@/features/tasks/types";
+import type { Task } from "@/features/tasks/types";
 import { useTasksStore } from "@/features/tasks/store";
 import { useSyncStore } from "@/features/sync/store";
 import { getUser } from "@/features/users/data";
@@ -33,14 +34,26 @@ async function fileToDataUrl(file: File, maxDim = 1200): Promise<string> {
   return c.toDataURL("image/jpeg", 0.78);
 }
 
-export function TaskForm({ creatorId, redirectTo }: { creatorId: string; redirectTo: string }) {
+export function TaskForm({
+  creatorId,
+  redirectTo,
+  mode = "staff",
+  onCreated,
+}: {
+  creatorId: string;
+  redirectTo?: string;
+  mode?: "staff" | "admin" | "resident";
+  onCreated?: (task: Task) => void;
+}) {
   const navigate = useNavigate();
   const create = useTasksStore((s) => s.createTask);
   const online = useSyncStore((s) => s.online);
   const user = getUser(creatorId);
+  const isResidentPortal = mode === "resident";
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [busyPhoto, setBusyPhoto] = useState(false);
+  const [reporterName, setReporterName] = useState("");
   const [blockId, setBlockId] = useState("");
   const [flatId, setFlatId] = useState("");
   const [title, setTitle] = useState("");
@@ -51,7 +64,14 @@ export function TaskForm({ creatorId, redirectTo }: { creatorId: string; redirec
 
   const block = BLOCKS.find((b) => b.id === blockId);
   const flats = block?.flats ?? [];
-  const canSubmit = !!(photo && blockId && flatId && title.trim() && desc.trim() && (problem || complaint));
+  const canSubmit = !!(
+    blockId &&
+    flatId &&
+    title.trim() &&
+    desc.trim() &&
+    (problem || complaint) &&
+    (!isResidentPortal || reporterName.trim())
+  );
 
   async function onPhoto(file: File | null) {
     if (!file) return;
@@ -65,32 +85,54 @@ export function TaskForm({ creatorId, redirectTo }: { creatorId: string; redirec
   }
 
   function submit() {
-    if (!canSubmit || !photo) return;
+    if (!canSubmit) return;
     const t = create(
       {
         title: title.trim(),
         description: desc.trim(),
-        photo,
+        photo: photo ?? undefined,
         blockId,
         flatId,
         problemCategory: problem || undefined,
         complaintCategory: complaint || undefined,
         createdById: creatorId,
+        reporterType: isResidentPortal ? "RESIDENT" : "USER",
+        reporterName: isResidentPortal ? reporterName.trim() : undefined,
       },
       creatorId,
     );
-    navigate({ to: redirectTo.replace("{id}", t.id) as any });
+    if (onCreated) {
+      onCreated(t);
+      return;
+    }
+    if (redirectTo) {
+      navigate({ to: redirectTo.replace("{id}", t.id) as any });
+    }
   }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-4">
       {!online && (
         <div className="surface-card border-accent/40 bg-accent/5 p-3 text-sm text-accent-foreground">
-          You're offline. The task will be saved locally and synced automatically when you're back online.
+          {isResidentPortal
+            ? "Você está offline. O registro será salvo localmente e enviado quando a conexão voltar."
+            : "You're offline. The task will be saved locally and synced automatically when you're back online."}
         </div>
       )}
 
-      <Section title="Photo" required>
+      {isResidentPortal && (
+        <Section title="Resident name" required hint="Used so the admin knows who reported the issue.">
+          <input
+            value={reporterName}
+            onChange={(e) => setReporterName(e.target.value)}
+            maxLength={80}
+            placeholder="Resident name"
+            className="w-full bg-surface-2 border border-border rounded-md px-3 py-2.5 text-sm focus-ring"
+          />
+        </Section>
+      )}
+
+      <Section title="Photo" hint="Optional, but helpful for triage.">
         {photo ? (
           <div className="relative">
             <img src={photo} alt="" className="w-full h-56 object-cover rounded-lg border border-border" />
@@ -107,7 +149,7 @@ export function TaskForm({ creatorId, redirectTo }: { creatorId: string; redirec
           <label className="surface-card flex flex-col items-center justify-center gap-2 p-8 text-muted-foreground border-dashed cursor-pointer hover:border-primary/50 hover:text-foreground focus-within:border-primary">
             {busyPhoto ? <Loader2 className="size-6 animate-spin" /> : <Camera className="size-6" />}
             <span className="text-sm font-medium">Take or upload a photo</span>
-            <span className="text-xs">JPG / PNG · auto-resized</span>
+            <span className="text-xs">JPG / PNG · optional · auto-resized</span>
             <input
               ref={fileRef}
               type="file"
@@ -191,15 +233,27 @@ export function TaskForm({ creatorId, redirectTo }: { creatorId: string; redirec
       </Section>
 
       <div className="flex items-center justify-between gap-3 pt-2">
-        <div className="text-xs text-muted-foreground">
-          Reporting as <span className="text-foreground font-medium">{user?.name}</span>
-        </div>
+        {isResidentPortal ? (
+          <div className="text-xs text-muted-foreground">
+            Public resident portal
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground">
+            Reporting as <span className="text-foreground font-medium">{user?.name}</span>
+          </div>
+        )}
         <button
           onClick={submit}
           disabled={!canSubmit}
           className="rounded-md bg-primary text-primary-foreground px-5 py-2.5 text-sm font-semibold shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none hover:bg-primary/90 focus-ring"
         >
-          {online ? "Submit task" : "Save offline"}
+          {isResidentPortal
+            ? online
+              ? "Send report"
+              : "Save offline report"
+            : online
+              ? "Submit task"
+              : "Save offline"}
         </button>
       </div>
     </div>

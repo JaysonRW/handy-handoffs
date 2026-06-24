@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { nanoid } from "@/lib/id";
+import { getUser } from "@/features/users/data";
 import type {
   ActivityEntry,
   Comment,
   Priority,
+  Role,
   Task,
   TaskStatus,
 } from "./types";
@@ -218,8 +220,12 @@ export const selectByAssignee = (uid: string) => (s: TasksState) =>
   s.tasks.filter((t) => t.assigneeId === uid);
 export const selectByCreator = (uid: string) => (s: TasksState) =>
   s.tasks.filter((t) => t.createdById === uid);
-export const selectVisibleForStaff = (uid: string) => (s: TasksState) =>
-  s.tasks.filter((t) => t.assigneeId === uid || t.createdById === uid);
+const getVisibleRole = (uid: string): Role | undefined => getUser(uid)?.role;
+export const selectVisibleForStaff = (uid: string) => (s: TasksState) => {
+  const role = getVisibleRole(uid);
+  if (role === "CLEANER") return s.tasks.filter((t) => t.assigneeId === uid);
+  return s.tasks.filter((t) => t.assigneeId === uid || t.createdById === uid);
+};
 export const selectCommentsForTask = (taskId: string) => (s: TasksState) =>
   s.comments.filter((c) => c.taskId === taskId);
 export const selectActivityForTask = (taskId: string) => (s: TasksState) =>

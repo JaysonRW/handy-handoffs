@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { Home, Plus, ListChecks, History, LogOut, CloudOff } from "lucide-react";
 import { Avatar } from "@/features/users/Avatar";
-import { getUser } from "@/features/users/data";
+import { canCreateTaskFromStaffPortal, getUser } from "@/features/users/data";
 import { SyncIndicator } from "@/features/sync/SyncIndicator";
 import { selectPendingSync, selectVisibleForStaff, useTasksStore } from "@/features/tasks/store";
 
@@ -20,6 +20,7 @@ export function StaffShell({
   actions?: React.ReactNode;
 }) {
   const user = getUser(userId);
+  const canCreate = user ? canCreateTaskFromStaffPortal(user.role) : false;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const pending = useTasksStore(
     (s) => selectPendingSync(s).filter((t) => t.createdById === userId).length,
@@ -29,7 +30,7 @@ export function StaffShell({
   const tabs = [
     { to: `/staff/${userId}`, label: "Home", icon: Home, exact: true },
     { to: `/staff/${userId}/tasks`, label: "Tasks", icon: ListChecks, badge: total },
-    { to: `/staff/${userId}/new`, label: "New", icon: Plus, primary: true },
+    ...(canCreate ? [{ to: `/staff/${userId}/new`, label: "New", icon: Plus, primary: true }] : []),
     { to: `/staff/${userId}/sync`, label: "Sync", icon: History, badge: pending || undefined },
   ];
 

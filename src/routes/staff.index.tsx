@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ArrowLeft } from "lucide-react";
-import { USERS, usersByRole } from "@/features/users/data";
+import { USERS, canSeeCreatedTasks, usersByRole } from "@/features/users/data";
 import { Avatar } from "@/features/users/Avatar";
 import { useTasksStore, selectVisibleForStaff } from "@/features/tasks/store";
 
@@ -31,7 +31,11 @@ function Group({ title, users }: { title: string; users: typeof USERS }) {
       <h2 className="text-xs uppercase tracking-widest text-muted-foreground mb-3">{title}</h2>
       <div className="grid gap-2 sm:grid-cols-2">
         {users.map((u) => {
-          const count = selectVisibleForStaff(u.id)({ tasks: allTasks } as any).filter((t) => t.status !== "DONE").length;
+          const visible = selectVisibleForStaff(u.id)({ tasks: allTasks } as any);
+          const count = visible.filter((t) => t.status !== "DONE").length;
+          const detail = canSeeCreatedTasks(u.role)
+            ? `${count} open task${count !== 1 && "s"}`
+            : `${count} assigned task${count !== 1 && "s"}`;
           return (
             <Link
               key={u.id}
@@ -41,7 +45,7 @@ function Group({ title, users }: { title: string; users: typeof USERS }) {
               <Avatar userId={u.id} size={48} />
               <div className="min-w-0 flex-1">
                 <div className="font-semibold truncate">{u.name}</div>
-                <div className="text-xs text-muted-foreground">{count} open task{count !== 1 && "s"}</div>
+                <div className="text-xs text-muted-foreground">{detail}</div>
               </div>
               <ArrowRight className="size-4 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" />
             </Link>

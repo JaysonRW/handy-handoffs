@@ -1,6 +1,6 @@
 import { nanoid } from "@/lib/id";
 import { BLOCKS } from "@/features/blocks/data";
-import { USERS } from "@/features/users/data";
+import { RESIDENT_PORTAL_USER_ID, USERS } from "@/features/users/data";
 import type { ActivityEntry, Comment, Task } from "./types";
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 3600_000).toISOString();
@@ -58,7 +58,9 @@ export function seedTasks(): {
       complaintCategory: "Common Area",
       status: "DOING",
       priority: "P2",
-      createdById: cleaners[0].id,
+      createdById: RESIDENT_PORTAL_USER_ID,
+      reporterType: "RESIDENT",
+      reporterName: "Morador - Oak",
       assigneeId: cleaners[0].id,
       createdAt: daysAgo(1),
       updatedAt: hoursAgo(2),
@@ -74,7 +76,9 @@ export function seedTasks(): {
       complaintCategory: "Waste",
       status: "DONE",
       priority: "P3",
-      createdById: cleaners[0].id,
+      createdById: RESIDENT_PORTAL_USER_ID,
+      reporterType: "RESIDENT",
+      reporterName: "Morador - Northwood",
       assigneeId: cleaners[0].id,
       createdAt: daysAgo(4),
       updatedAt: daysAgo(1),
@@ -122,7 +126,9 @@ export function seedTasks(): {
       complaintCategory: "Cleaning",
       status: "NEW",
       priority: null,
-      createdById: cleaners[0].id,
+      createdById: RESIDENT_PORTAL_USER_ID,
+      reporterType: "RESIDENT",
+      reporterName: "Morador - Merlin",
       assigneeId: null,
       createdAt: hoursAgo(1),
       updatedAt: hoursAgo(1),

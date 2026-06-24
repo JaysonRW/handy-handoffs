@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminShell } from "@/components/layout/AdminShell";
-import { USERS } from "@/features/users/data";
+import { visibleUsers } from "@/features/users/data";
 import { Avatar } from "@/features/users/Avatar";
 import { useTasksStore } from "@/features/tasks/store";
 
@@ -11,10 +11,11 @@ export const Route = createFileRoute("/admin/users")({
 
 function TeamPage() {
   const tasks = useTasksStore((s) => s.tasks);
+  const users = visibleUsers();
   return (
-    <AdminShell title="Team" subtitle={`${USERS.length} users · 1 admin`}>
+    <AdminShell title="Team" subtitle={`${users.length} users · 1 admin`}>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {USERS.map((u) => {
+        {users.map((u) => {
           const open = tasks.filter((t) => t.assigneeId === u.id && t.status !== "DONE").length;
           const created = tasks.filter((t) => t.createdById === u.id).length;
           const portal = u.role === "MASTER_ADMIN" ? "/admin" : `/staff/${u.id}`;

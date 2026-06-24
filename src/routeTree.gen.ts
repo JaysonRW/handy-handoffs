@@ -14,9 +14,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffIndexRouteImport } from './routes/staff.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as StaffUserIdRouteImport } from './routes/staff.$userId'
+import { Route as ReportNewRouteImport } from './routes/report.new'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminSyncRouteImport } from './routes/admin.sync'
+import { Route as AdminNewRouteImport } from './routes/admin.new'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminBlocksRouteImport } from './routes/admin.blocks'
 import { Route as StaffUserIdIndexRouteImport } from './routes/staff.$userId.index'
@@ -51,6 +53,11 @@ const StaffUserIdRoute = StaffUserIdRouteImport.update({
   path: '/staff/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportNewRoute = ReportNewRouteImport.update({
+  id: '/report/new',
+  path: '/report/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -64,6 +71,11 @@ const AdminTasksRoute = AdminTasksRouteImport.update({
 const AdminSyncRoute = AdminSyncRouteImport.update({
   id: '/sync',
   path: '/sync',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminNewRoute = AdminNewRouteImport.update({
+  id: '/new',
+  path: '/new',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -112,9 +124,11 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/admin/blocks': typeof AdminBlocksRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/new': typeof AdminNewRoute
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/report/new': typeof ReportNewRoute
   '/staff/$userId': typeof StaffUserIdRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/staff/': typeof StaffIndexRoute
@@ -129,9 +143,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin/blocks': typeof AdminBlocksRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/new': typeof AdminNewRoute
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/report/new': typeof ReportNewRoute
   '/admin': typeof AdminIndexRoute
   '/staff': typeof StaffIndexRoute
   '/admin/tasks/$taskId': typeof AdminTasksTaskIdRoute
@@ -147,9 +163,11 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/admin/blocks': typeof AdminBlocksRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/new': typeof AdminNewRoute
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/report/new': typeof ReportNewRoute
   '/staff/$userId': typeof StaffUserIdRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/staff/': typeof StaffIndexRoute
@@ -167,9 +185,11 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/blocks'
     | '/admin/login'
+    | '/admin/new'
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
+    | '/report/new'
     | '/staff/$userId'
     | '/admin/'
     | '/staff/'
@@ -184,9 +204,11 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/blocks'
     | '/admin/login'
+    | '/admin/new'
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
+    | '/report/new'
     | '/admin'
     | '/staff'
     | '/admin/tasks/$taskId'
@@ -201,9 +223,11 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/blocks'
     | '/admin/login'
+    | '/admin/new'
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
+    | '/report/new'
     | '/staff/$userId'
     | '/admin/'
     | '/staff/'
@@ -218,6 +242,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  ReportNewRoute: typeof ReportNewRoute
   StaffUserIdRoute: typeof StaffUserIdRouteWithChildren
   StaffIndexRoute: typeof StaffIndexRoute
 }
@@ -259,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/report/new': {
+      id: '/report/new'
+      path: '/report/new'
+      fullPath: '/report/new'
+      preLoaderRoute: typeof ReportNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -278,6 +310,13 @@ declare module '@tanstack/react-router' {
       path: '/sync'
       fullPath: '/admin/sync'
       preLoaderRoute: typeof AdminSyncRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/new': {
+      id: '/admin/new'
+      path: '/new'
+      fullPath: '/admin/new'
+      preLoaderRoute: typeof AdminNewRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/login': {
@@ -354,6 +393,7 @@ const AdminTasksRouteWithChildren = AdminTasksRoute._addFileChildren(
 interface AdminRouteChildren {
   AdminBlocksRoute: typeof AdminBlocksRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminNewRoute: typeof AdminNewRoute
   AdminSyncRoute: typeof AdminSyncRoute
   AdminTasksRoute: typeof AdminTasksRouteWithChildren
   AdminUsersRoute: typeof AdminUsersRoute
@@ -363,6 +403,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBlocksRoute: AdminBlocksRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminNewRoute: AdminNewRoute,
   AdminSyncRoute: AdminSyncRoute,
   AdminTasksRoute: AdminTasksRouteWithChildren,
   AdminUsersRoute: AdminUsersRoute,
@@ -403,6 +444,7 @@ const StaffUserIdRouteWithChildren = StaffUserIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  ReportNewRoute: ReportNewRoute,
   StaffUserIdRoute: StaffUserIdRouteWithChildren,
   StaffIndexRoute: StaffIndexRoute,
 }

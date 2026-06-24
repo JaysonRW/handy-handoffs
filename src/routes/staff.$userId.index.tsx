@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus, ArrowRight, Inbox, ListChecks, CheckCircle2, CloudOff } from "lucide-react";
 import { StaffShell } from "@/components/layout/StaffShell";
-import { getUser } from "@/features/users/data";
-import { useTasksStore } from "@/features/tasks/store";
+import { canCreateTaskFromStaffPortal, canSeeCreatedTasks, getUser } from "@/features/users/data";
+import { selectVisibleForStaff, useTasksStore } from "@/features/tasks/store";
 import { TaskCard } from "@/features/tasks/components/TaskCard";
 
 export const Route = createFileRoute("/staff/$userId/")({
@@ -13,8 +13,9 @@ export const Route = createFileRoute("/staff/$userId/")({
 function StaffHome() {
   const { userId } = Route.useParams();
   const user = getUser(userId)!;
-  const allTasks = useTasksStore((s) => s.tasks);
-  const tasks = allTasks.filter((task) => task.assigneeId === userId || task.createdById === userId);
+  const tasks = useTasksStore((s) => selectVisibleForStaff(userId)(s));
+  const canCreate = canCreateTaskFromStaffPortal(user.role);
+  const canSeeCreated = canSeeCreatedTasks(user.role);
 
   const newQ = tasks.filter((t) => t.status === "NEW");
   const doing = tasks.filter((t) => t.status === "DOING");
@@ -25,24 +26,26 @@ function StaffHome() {
   return (
     <StaffShell userId={userId} title={`Hi, ${user.name.split(" ")[0]}`} subtitle={user.role === "CARETAKER" ? "Caretaker dashboard" : "Cleaner dashboard"}>
       <div className="max-w-3xl mx-auto px-4 pt-4 pb-4 flex flex-col gap-4">
-        <Link
-          to={`/staff/${userId}/new` as any}
-          className="surface-card relative overflow-hidden p-5 group flex items-center gap-4 hover:border-primary/50 focus-ring"
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/15 to-transparent opacity-60 pointer-events-none" />
-          <span className="size-14 grid place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 shrink-0">
-            <Plus className="size-6" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="font-bold text-lg">Report a new issue</div>
-            <div className="text-xs text-muted-foreground">Snap a photo, pick the location, send it.</div>
-          </div>
-          <ArrowRight className="size-5 text-primary transition group-hover:translate-x-1" />
-        </Link>
+        {canCreate && (
+          <Link
+            to={`/staff/${userId}/new` as any}
+            className="surface-card relative overflow-hidden p-5 group flex items-center gap-4 hover:border-primary/50 focus-ring"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/15 to-transparent opacity-60 pointer-events-none" />
+            <span className="size-14 grid place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 shrink-0">
+              <Plus className="size-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold text-lg">Report a new issue</div>
+              <div className="text-xs text-muted-foreground">Capture a task for admin triage.</div>
+            </div>
+            <ArrowRight className="size-5 text-primary transition group-hover:translate-x-1" />
+          </Link>
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <Mini label="My active" value={doing.filter((t) => t.assigneeId === userId).length} icon={ListChecks} />
-          <Mini label="In review" value={newQ.filter((t) => t.createdById === userId).length} icon={Inbox} />
+          <Mini label={canSeeCreated ? "In review" : "New assigned"} value={canSeeCreated ? newQ.filter((t) => t.createdById === userId).length : newQ.length} icon={Inbox} />
           <Mini label="Completed" value={done.length} icon={CheckCircle2} />
           <Mini label="Pending sync" value={pendingSync.length} icon={CloudOff} tone="accent" />
         </div>

@@ -2,22 +2,24 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Camera, CheckCircle2, MessageSquarePlus, RotateCcw, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { Task, Priority } from "@/features/tasks/types";
+import type { Task, Priority, Role } from "@/features/tasks/types";
 import { PriorityBadge } from "./PriorityBadge";
 import { StatusBadge } from "./StatusBadge";
 import { Avatar } from "@/features/users/Avatar";
 import { getBlock, getFlat } from "@/features/blocks/data";
-import { USERS, getUser, usersByRole } from "@/features/users/data";
+import { USERS, canCommentOnTasks, canCompleteAssignedTasks, canStartAssignedTasks, getUser, usersByRole } from "@/features/users/data";
 import { useTasksStore } from "@/features/tasks/store";
 
 export function TaskDetail({
   task,
   actorId,
+  actorRole,
   backHref,
   isAdmin,
 }: {
   task: Task;
   actorId: string;
+  actorRole: Role;
   backHref: string;
   isAdmin: boolean;
 }) {
@@ -38,10 +40,15 @@ export function TaskDetail({
   const flat = getFlat(task.blockId, task.flatId);
   const creator = getUser(task.createdById);
   const assignable = [...usersByRole("CARETAKER"), ...usersByRole("CLEANER")];
+  const reporterName = task.reporterType === "RESIDENT"
+    ? task.reporterName ?? "Resident"
+    : creator?.name ?? "Unknown";
 
   const [text, setText] = useState("");
-  const canEdit = isAdmin || task.assigneeId === actorId || task.createdById === actorId;
-  const canTransition = task.assigneeId === actorId || isAdmin;
+  const isAssignedToActor = task.assigneeId === actorId;
+  const isCreatedByActor = task.createdById === actorId;
+  const canEdit = isAdmin || (canCommentOnTasks(actorRole) && (isAssignedToActor || isCreatedByActor));
+  const canTransition = isAdmin || (canCompleteAssignedTasks(actorRole) && isAssignedToActor);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
@@ -63,7 +70,12 @@ export function TaskDetail({
           <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>
           <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
             <Avatar userId={task.createdById} size={24} />
-            <span>Reported by <span className="text-foreground font-medium">{creator?.name}</span> · {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}</span>
+            <span>
+              Reported by <span className="text-foreground font-medium">{reporterName}</span>
+              {task.reporterType === "RESIDENT" ? " via resident portal" : ""}
+              {" · "}
+              {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}
+            </span>
           </div>
 
           {(task.photo || (task.extraPhotos?.length ?? 0) > 0) && (
@@ -135,7 +147,7 @@ export function TaskDetail({
             </div>
           )}
 
-          {canTransition && task.status !== "NEW" && (
+          {canTransition && actorRole !== "CLEANER" && task.status !== "NEW" && (
             <div className="pt-2 border-t border-border flex flex-col gap-2">
               <span className="text-xs text-muted-foreground">Update status</span>
               <div className="grid grid-cols-2 gap-1">
@@ -152,11 +164,19 @@ export function TaskDetail({
               </div>
             </div>
           )}
-          {canTransition && task.status === "NEW" && task.assigneeId === actorId && (
+          {canTransition && canStartAssignedTasks(actorRole) && task.status === "NEW" && task.assigneeId === actorId && (
             <button
               onClick={() => setStatus(task.id, "DOING", actorId)}
               className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-semibold focus-ring hover:bg-primary/90"
             >Start work</button>
+          )}
+          {canTransition && actorRole === "CLEANER" && task.status !== "DONE" && (
+            <button
+              onClick={() => setStatus(task.id, "DONE", actorId)}
+              className="rounded-md border border-success/40 bg-success/15 text-success hover:bg-success/25 px-3 py-2 text-sm font-semibold focus-ring"
+            >
+              Mark done
+            </button>
           )}
         </aside>
       </header>

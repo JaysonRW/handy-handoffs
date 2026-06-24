@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { format, formatDistanceToNow } from "date-fns";
 import { CloudOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { StaffShell } from "@/components/layout/StaffShell";
+import { canSeeCreatedTasks, getUser } from "@/features/users/data";
 import { useSyncStore } from "@/features/sync/store";
-import { useTasksStore } from "@/features/tasks/store";
+import { selectVisibleForStaff, useTasksStore } from "@/features/tasks/store";
 import { simulateOffline, triggerManualSync } from "@/features/sync/runtime";
 
 export const Route = createFileRoute("/staff/$userId/sync")({
@@ -13,11 +14,11 @@ export const Route = createFileRoute("/staff/$userId/sync")({
 
 function StaffSync() {
   const { userId } = Route.useParams();
+  const user = getUser(userId)!;
   const online = useSyncStore((s) => s.online);
   const syncing = useSyncStore((s) => s.syncing);
   const history = useSyncStore((s) => s.history);
-  const allTasks = useTasksStore((s) => s.tasks);
-  const myTasks = allTasks.filter((task) => task.createdById === userId);
+  const myTasks = useTasksStore((s) => selectVisibleForStaff(userId)(s));
   const pending = myTasks.filter((t) => !t.synced);
 
   return (
@@ -30,7 +31,7 @@ function StaffSync() {
               {online ? "Online" : "Offline"}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {pending.length} of your tasks waiting to sync
+              {pending.length} {canSeeCreatedTasks(user.role) ? "visible tasks" : "assigned tasks"} waiting to sync
             </p>
           </div>
           <div className="flex items-center gap-2">

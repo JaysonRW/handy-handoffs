@@ -15,7 +15,7 @@ function AdminTaskDetail() {
   if (!task) throw notFound();
   return (
     <AdminShell title={task.title} subtitle="Admin task review">
-      <TaskDetail task={task} actorId="u_admin" backHref="/admin/tasks" isAdmin />
+      <TaskDetail task={task} actorId="u_admin" actorRole="MASTER_ADMIN" backHref="/admin/tasks" isAdmin />
     </AdminShell>
   );
 }

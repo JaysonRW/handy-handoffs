@@ -1,4 +1,4 @@
-export type Role = "MASTER_ADMIN" | "CARETAKER" | "CLEANER";
+export type Role = "MASTER_ADMIN" | "CARETAKER" | "CLEANER" | "RESIDENT";
 
 export type TaskStatus = "NEW" | "DOING" | "DONE";
 export type Priority = "P1" | "P2" | "P3" | null;
@@ -62,6 +62,8 @@ export interface Task {
   status: TaskStatus;
   priority: Priority;
   createdById: string;
+  reporterType?: "USER" | "RESIDENT";
+  reporterName?: string;
   assigneeId: string | null;
   createdAt: string;
   updatedAt: string;
