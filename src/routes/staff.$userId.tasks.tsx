@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { StaffShell } from "@/components/layout/StaffShell";
 import { getUser } from "@/features/users/data";
@@ -13,11 +13,17 @@ export const Route = createFileRoute("/staff/$userId/tasks")({
 
 function StaffTasks() {
   const { userId } = Route.useParams();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const user = getUser(userId)!;
   const allTasks = useTasksStore((s) => s.tasks);
   const tasks = useMemo(() => selectVisibleForStaff(userId)({ tasks: allTasks } as any), [allTasks, userId]);
   const [filters, setFilters] = useTaskFiltersState();
   const filtered = useFilteredTasks(tasks, filters);
+  const basePath = `/staff/${userId}/tasks`;
+
+  if (pathname !== basePath) {
+    return <Outlet />;
+  }
 
   return (
     <StaffShell userId={userId} title="My tasks" subtitle={`${filtered.length} of ${tasks.length} · ${user.role.toLowerCase()}`}>
