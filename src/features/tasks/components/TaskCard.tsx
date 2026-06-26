@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { CloudOff, MessageSquare, Camera } from "lucide-react";
 import type { Task } from "@/features/tasks/types";
@@ -9,15 +9,34 @@ import { getBlock, getFlat } from "@/features/blocks/data";
 import { useTasksStore } from "@/features/tasks/store";
 import { cn } from "@/lib/utils";
 
-export function TaskCard({ task, href, compact = false }: { task: Task; href: string; compact?: boolean }) {
+export function TaskCard({
+  task,
+  href,
+  compact = false,
+  actions,
+}: {
+  task: Task;
+  href: string;
+  compact?: boolean;
+  actions?: React.ReactNode;
+}) {
+  const navigate = useNavigate();
   const block = getBlock(task.blockId);
   const flat = getFlat(task.blockId, task.flatId);
   const comments = useTasksStore((s) => s.comments.filter((comment) => comment.taskId === task.id).length);
   const photos = (task.photo ? 1 : 0) + (task.extraPhotos?.length ?? 0);
 
   return (
-    <Link
-      to={href as any}
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={() => navigate({ to: href as any })}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          navigate({ to: href as any });
+        }
+      }}
       className={cn(
         "surface-card group relative block p-4 transition hover:border-primary/50 hover:bg-surface-2 focus-ring",
       )}
@@ -69,6 +88,14 @@ export function TaskCard({ task, href, compact = false }: { task: Task; href: st
           </div>
         </div>
       </div>
-    </Link>
+
+      {actions && (
+        <div
+          className="mt-3 pt-3 border-t border-border/60"
+        >
+          {actions}
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { LayoutGrid, Plus, Rows3 } from "lucide-react";
 import { AdminShell } from "@/components/layout/AdminShell";
@@ -14,10 +14,15 @@ export const Route = createFileRoute("/admin/tasks")({
 });
 
 function AdminTasks() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const tasks = useTasksStore((s) => s.tasks);
   const [filters, setFilters] = useTaskFiltersState();
   const filtered = useFilteredTasks(tasks, filters);
   const [view, setView] = useState<"kanban" | "table">("kanban");
+
+  if (pathname !== "/admin/tasks") {
+    return <Outlet />;
+  }
 
   return (
     <AdminShell
@@ -42,9 +47,9 @@ function AdminTasks() {
       <div className="flex flex-col gap-4">
         <TaskFiltersBar value={filters} onChange={setFilters} />
         {view === "kanban" ? (
-          <TaskKanban tasks={filtered} buildHref={(t) => `/admin/tasks/${t.id}`} />
+          <TaskKanban tasks={filtered} buildHref={(t) => `/admin/tasks/${t.id}`} actorId="u_admin" />
         ) : (
-          <TaskTable tasks={filtered} buildHref={(t) => `/admin/tasks/${t.id}`} />
+          <TaskTable tasks={filtered} buildHref={(t) => `/admin/tasks/${t.id}`} actorId="u_admin" />
         )}
       </div>
     </AdminShell>

@@ -51,7 +51,15 @@ export function useFilteredTasks(tasks: Task[], filters: TaskFilters) {
   }, [tasks, filters]);
 }
 
-export function TaskFiltersBar({ value, onChange }: { value: TaskFilters; onChange: (v: TaskFilters) => void }) {
+export function TaskFiltersBar({
+  value,
+  onChange,
+  hideAssignee = false,
+}: {
+  value: TaskFilters;
+  onChange: (v: TaskFilters) => void;
+  hideAssignee?: boolean;
+}) {
   const block = BLOCKS.find((b) => b.id === value.blockId);
   const assignable = [...usersByRole("CARETAKER"), ...usersByRole("CLEANER")];
 
@@ -82,11 +90,13 @@ export function TaskFiltersBar({ value, onChange }: { value: TaskFilters; onChan
         <option value="ALL">All status</option>
         <option value="NEW">New</option><option value="DOING">Doing</option><option value="DONE">Done</option>
       </Select>
-      <Select value={value.assigneeId} onChange={(v) => upd("assigneeId", v as TaskFilters["assigneeId"])}>
-        <option value="ALL">Any assignee</option>
-        <option value="UNASSIGNED">Unassigned</option>
-        {assignable.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-      </Select>
+      {!hideAssignee && (
+        <Select value={value.assigneeId} onChange={(v) => upd("assigneeId", v as TaskFilters["assigneeId"])}>
+          <option value="ALL">Any assignee</option>
+          <option value="UNASSIGNED">Unassigned</option>
+          {assignable.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </Select>
+      )}
       <Select value={value.range} onChange={(v) => upd("range", v as TaskFilters["range"])}>
         <option value="ALL">Any date</option>
         <option value="TODAY">Today</option>
