@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, Plus, Rows3 } from "lucide-react";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { BLOCKS } from "@/features/blocks/data";
@@ -20,11 +20,12 @@ function AdminTasks() {
   const navigate = useNavigate({ from: "/admin/tasks" });
   const search = Route.useSearch();
   const tasks = useTasksStore((s) => s.tasks);
-  const [filters, setFilters] = useTaskFiltersState({
+  const initialFilters = useMemo(() => ({
     ...defaultFilters,
     blockId: search.blockId ?? "ALL",
     flatId: search.flatId ?? "ALL",
-  });
+  }), [search.blockId, search.flatId]);
+  const [filters, setFilters] = useTaskFiltersState(initialFilters);
   const filtered = useFilteredTasks(tasks, filters);
   const [view, setView] = useState<"kanban" | "table">("kanban");
 
@@ -39,14 +40,15 @@ function AdminTasks() {
     );
   }, [search.blockId, search.flatId, setFilters]);
 
-  useEffect(() => {
-    if (pathname !== "/admin/tasks") return;
+  if (pathname !== "/admin/tasks") {
+    return <Outlet />;
+  }
 
-    const nextSearch = buildTaskSearch(filters.blockId, filters.flatId);
-    const currentBlockId = search.blockId;
-    const currentFlatId = search.flatId;
+  function handleFiltersChange(nextFilters: typeof filters) {
+    setFilters(nextFilters);
 
-    if (currentBlockId === nextSearch.blockId && currentFlatId === nextSearch.flatId) {
+    const nextSearch = buildTaskSearch(nextFilters.blockId, nextFilters.flatId);
+    if (search.blockId === nextSearch.blockId && search.flatId === nextSearch.flatId) {
       return;
     }
 
@@ -55,10 +57,6 @@ function AdminTasks() {
       search: nextSearch,
       replace: true,
     });
-  }, [filters.blockId, filters.flatId, navigate, pathname, search.blockId, search.flatId]);
-
-  if (pathname !== "/admin/tasks") {
-    return <Outlet />;
   }
 
   return (
@@ -82,7 +80,7 @@ function AdminTasks() {
       }
     >
       <div className="flex flex-col gap-4">
-        <TaskFiltersBar value={filters} onChange={setFilters} />
+        <TaskFiltersBar value={filters} onChange={handleFiltersChange} />
         {view === "kanban" ? (
           <TaskKanban tasks={filtered} buildHref={(t) => `/admin/tasks/${t.id}`} actorId="u_admin" />
         ) : (

@@ -123,6 +123,6 @@ function Select({ value, onChange, children, disabled }: { value: string; onChan
   );
 }
 
-export function useTaskFiltersState() {
-  return useState<TaskFilters>(defaultFilters);
+export function useTaskFiltersState(initialValue: TaskFilters = defaultFilters) {
+  return useState<TaskFilters>(initialValue);
 }
