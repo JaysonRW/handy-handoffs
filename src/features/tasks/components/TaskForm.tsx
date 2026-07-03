@@ -2,14 +2,10 @@ import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Camera, Loader2, X } from "lucide-react";
 import { BLOCKS } from "@/features/blocks/data";
-import type { ComplaintCategory, ProblemCategory } from "@/features/tasks/types";
 import type { Task } from "@/features/tasks/types";
 import { useTasksStore } from "@/features/tasks/store";
 import { useSyncStore } from "@/features/sync/store";
 import { getUser } from "@/features/users/data";
-
-const PROBLEM_CATS: ProblemCategory[] = ["Plumbing", "Electrical", "HVAC", "Structural", "Appliance", "Lighting", "Other"];
-const COMPLAINT_CATS: ComplaintCategory[] = ["Cleaning", "Noise", "Waste", "Pest", "Common Area", "Safety", "Other"];
 
 async function fileToDataUrl(file: File, maxDim = 1200): Promise<string> {
   const dataUrl: string = await new Promise((res, rej) => {
@@ -56,10 +52,7 @@ export function TaskForm({
   const [reporterName, setReporterName] = useState("");
   const [blockId, setBlockId] = useState("");
   const [flatId, setFlatId] = useState("");
-  const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
-  const [problem, setProblem] = useState<ProblemCategory | "">("");
-  const [complaint, setComplaint] = useState<ComplaintCategory | "">("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const block = BLOCKS.find((b) => b.id === blockId);
@@ -67,9 +60,7 @@ export function TaskForm({
   const canSubmit = !!(
     blockId &&
     flatId &&
-    title.trim() &&
     desc.trim() &&
-    (problem || complaint) &&
     (!isResidentPortal || reporterName.trim())
   );
 
@@ -86,15 +77,14 @@ export function TaskForm({
 
   function submit() {
     if (!canSubmit) return;
+    const generatedTitle = buildTaskTitle(desc.trim(), blockId, flatId);
     const t = create(
       {
-        title: title.trim(),
+        title: generatedTitle,
         description: desc.trim(),
         photo: photo ?? undefined,
         blockId,
         flatId,
-        problemCategory: problem || undefined,
-        complaintCategory: complaint || undefined,
         createdById: creatorId,
         reporterType: isResidentPortal ? "RESIDENT" : "USER",
         reporterName: isResidentPortal ? reporterName.trim() : undefined,
@@ -184,50 +174,13 @@ export function TaskForm({
         </div>
       </Section>
 
-      <Section title="Category" required hint="Pick the one that best matches.">
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Problem</label>
-            <select
-              value={problem}
-              onChange={(e) => { setProblem(e.target.value as ProblemCategory | ""); if (e.target.value) setComplaint(""); }}
-              className="mt-1 w-full bg-surface-2 border border-border rounded-md px-3 py-2.5 text-sm focus-ring"
-            >
-              <option value="">—</option>
-              {PROBLEM_CATS.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Complaint</label>
-            <select
-              value={complaint}
-              onChange={(e) => { setComplaint(e.target.value as ComplaintCategory | ""); if (e.target.value) setProblem(""); }}
-              className="mt-1 w-full bg-surface-2 border border-border rounded-md px-3 py-2.5 text-sm focus-ring"
-            >
-              <option value="">—</option>
-              {COMPLAINT_CATS.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
-      </Section>
-
-      <Section title="Title" required>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          maxLength={80}
-          placeholder="Short summary"
-          className="w-full bg-surface-2 border border-border rounded-md px-3 py-2.5 text-sm focus-ring"
-        />
-      </Section>
-
       <Section title="Description" required>
         <textarea
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
           rows={4}
           maxLength={500}
-          placeholder="What did you observe? Where exactly?"
+          placeholder="Describe the issue and where it is happening."
           className="w-full bg-surface-2 border border-border rounded-md px-3 py-2.5 text-sm focus-ring resize-none"
         />
       </Section>
@@ -258,6 +211,16 @@ export function TaskForm({
       </div>
     </div>
   );
+}
+
+function buildTaskTitle(description: string, blockId: string, flatId: string) {
+  const normalized = description.replace(/\s+/g, " ").trim();
+  const preview = normalized.length > 60 ? `${normalized.slice(0, 57).trimEnd()}...` : normalized;
+  const block = BLOCKS.find((item) => item.id === blockId);
+  const flat = block?.flats.find((item) => item.id === flatId);
+  const location = [block?.name, flat?.label ? `Flat ${flat.label}` : null].filter(Boolean).join(" · ");
+
+  return location ? `${location} · ${preview}` : preview;
 }
 
 function Section({ title, required, hint, children }: { title: string; required?: boolean; hint?: string; children: React.ReactNode }) {

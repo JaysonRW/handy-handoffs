@@ -1,24 +1,61 @@
-import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { LayoutGrid, Plus, Rows3 } from "lucide-react";
 import { AdminShell } from "@/components/layout/AdminShell";
+import { BLOCKS } from "@/features/blocks/data";
 import { useTasksStore } from "@/features/tasks/store";
-import { TaskFiltersBar, useFilteredTasks, useTaskFiltersState } from "@/features/tasks/components/TaskFilters";
+import { TaskFiltersBar, defaultFilters, useFilteredTasks, useTaskFiltersState } from "@/features/tasks/components/TaskFilters";
 import { TaskKanban } from "@/features/tasks/components/TaskKanban";
 import { TaskTable } from "@/features/tasks/components/TaskTable";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/tasks")({
+  validateSearch: (search: Record<string, unknown>) => sanitizeTaskSearch(search),
   head: () => ({ meta: [{ title: "Tasks · PMTMS Admin" }] }),
   component: AdminTasks,
 });
 
 function AdminTasks() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate({ from: "/admin/tasks" });
+  const search = Route.useSearch();
   const tasks = useTasksStore((s) => s.tasks);
-  const [filters, setFilters] = useTaskFiltersState();
+  const [filters, setFilters] = useTaskFiltersState({
+    ...defaultFilters,
+    blockId: search.blockId ?? "ALL",
+    flatId: search.flatId ?? "ALL",
+  });
   const filtered = useFilteredTasks(tasks, filters);
   const [view, setView] = useState<"kanban" | "table">("kanban");
+
+  useEffect(() => {
+    const nextBlockId = search.blockId ?? "ALL";
+    const nextFlatId = search.flatId ?? "ALL";
+
+    setFilters((current) =>
+      current.blockId === nextBlockId && current.flatId === nextFlatId
+        ? current
+        : { ...current, blockId: nextBlockId, flatId: nextFlatId },
+    );
+  }, [search.blockId, search.flatId, setFilters]);
+
+  useEffect(() => {
+    if (pathname !== "/admin/tasks") return;
+
+    const nextSearch = buildTaskSearch(filters.blockId, filters.flatId);
+    const currentBlockId = search.blockId;
+    const currentFlatId = search.flatId;
+
+    if (currentBlockId === nextSearch.blockId && currentFlatId === nextSearch.flatId) {
+      return;
+    }
+
+    navigate({
+      to: "/admin/tasks",
+      search: nextSearch,
+      replace: true,
+    });
+  }, [filters.blockId, filters.flatId, navigate, pathname, search.blockId, search.flatId]);
 
   if (pathname !== "/admin/tasks") {
     return <Outlet />;
@@ -66,4 +103,23 @@ function Toggle({ active, onClick, icon, label }: { active: boolean; onClick: ()
       )}
     >{icon}{label}</button>
   );
+}
+
+function sanitizeTaskSearch(search: Record<string, unknown>) {
+  const rawBlockId = typeof search.blockId === "string" ? search.blockId : undefined;
+  const block = rawBlockId ? BLOCKS.find((item) => item.id === rawBlockId) : undefined;
+  const rawFlatId = typeof search.flatId === "string" ? search.flatId : undefined;
+  const flat = rawFlatId ? block?.flats.find((item) => item.id === rawFlatId) : undefined;
+
+  return {
+    blockId: block?.id,
+    flatId: flat?.id,
+  };
+}
+
+function buildTaskSearch(blockId: string, flatId: string) {
+  return {
+    blockId: blockId !== "ALL" ? blockId : undefined,
+    flatId: blockId !== "ALL" && flatId !== "ALL" ? flatId : undefined,
+  };
 }
