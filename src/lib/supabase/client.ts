@@ -6,6 +6,10 @@ const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.tr
 let browserClient: SupabaseClient | undefined;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
+export const supabaseEnvStatus = {
+  hasSupabaseUrl: Boolean(supabaseUrl),
+  hasSupabasePublishableKey: Boolean(supabasePublishableKey),
+};
 
 export function getSupabaseBrowserClient() {
   if (!supabaseUrl || !supabasePublishableKey) {

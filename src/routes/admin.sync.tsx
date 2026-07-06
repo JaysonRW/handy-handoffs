@@ -4,6 +4,7 @@ import { CloudOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { useSyncStore } from "@/features/sync/store";
 import { useTasksStore } from "@/features/tasks/store";
+import { isSupabaseConfigured, supabaseEnvStatus } from "@/lib/supabase/client";
 import { simulateOffline, triggerManualSync } from "@/features/sync/runtime";
 
 export const Route = createFileRoute("/admin/sync")({
@@ -15,6 +16,7 @@ function SyncPage() {
   const online = useSyncStore((s) => s.online);
   const syncing = useSyncStore((s) => s.syncing);
   const history = useSyncStore((s) => s.history);
+  const debug = useSyncStore((s) => s.debug);
   const tasks = useTasksStore((s) => s.tasks);
   const pending = tasks.filter((task) => !task.synced);
 
@@ -57,20 +59,93 @@ function SyncPage() {
             </ul>
           )}
         </section>
-        <aside className="surface-card p-5">
-          <h2 className="text-lg font-bold mb-3">History</h2>
-          {history.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-4">No sync events yet.</p>
-          ) : (
-            <ol className="flex flex-col gap-2">
-              {history.map((h) => (
-                <li key={h.id} className="text-xs flex items-center justify-between border-b border-border pb-2 last:border-0">
-                  <span><span className="font-semibold">{h.count}</span> task{h.count !== 1 && "s"} · {h.trigger}</span>
-                  <span className="text-muted-foreground">{format(new Date(h.at), "MMM d, HH:mm")}</span>
-                </li>
-              ))}
-            </ol>
-          )}
+        <aside className="flex flex-col gap-6">
+          <section className="surface-card p-5">
+            <h2 className="text-lg font-bold mb-3">Supabase status</h2>
+            <dl className="grid gap-2 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Configured</dt>
+                <dd className="font-medium">{String(debug.supabaseConfigured ?? isSupabaseConfigured)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Has URL</dt>
+                <dd className="font-medium">{String(debug.hasSupabaseUrl ?? supabaseEnvStatus.hasSupabaseUrl)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Has publishable key</dt>
+                <dd className="font-medium">{String(debug.hasSupabasePublishableKey ?? supabaseEnvStatus.hasSupabasePublishableKey)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Last hydrate</dt>
+                <dd className="font-medium">{debug.lastHydrate?.status ?? "never"}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Last push</dt>
+                <dd className="font-medium">{debug.lastPush?.status ?? "never"}</dd>
+              </div>
+            </dl>
+
+            <div className="mt-4 grid gap-3 text-xs">
+              <div className="rounded-md border border-border bg-surface-2 p-3">
+                <div className="font-semibold">Hydrate details</div>
+                <p className="mt-1 text-muted-foreground">
+                  {debug.lastHydrate?.message ?? "No hydrate attempt recorded yet."}
+                </p>
+                {debug.lastHydrate && (
+                  <p className="mt-2 text-muted-foreground">
+                    tasks={debug.lastHydrate.taskCount ?? 0} comments={debug.lastHydrate.commentCount ?? 0} activity={debug.lastHydrate.activityCount ?? 0}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-md border border-border bg-surface-2 p-3">
+                <div className="font-semibold">Push details</div>
+                <p className="mt-1 text-muted-foreground">
+                  {debug.lastPush?.message ?? "No push attempt recorded yet."}
+                </p>
+                {debug.lastPush && (
+                  <p className="mt-2 text-muted-foreground">
+                    trigger={debug.lastPush.trigger} pending={debug.lastPush.pendingCount ?? 0} synced={debug.lastPush.syncedCount ?? 0}
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="surface-card p-5">
+            <h2 className="text-lg font-bold mb-3">Debug events</h2>
+            {debug.events.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4">No runtime evidence captured yet.</p>
+            ) : (
+              <ol className="flex flex-col gap-2">
+                {debug.events.map((event) => (
+                  <li key={event.id} className="rounded-md border border-border bg-surface-2 p-3 text-xs">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold">{event.scope} · {event.status}</span>
+                      <span className="text-muted-foreground">{format(new Date(event.at), "MMM d, HH:mm:ss")}</span>
+                    </div>
+                    <p className="mt-1 text-muted-foreground">{event.message}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+
+          <section className="surface-card p-5">
+            <h2 className="text-lg font-bold mb-3">History</h2>
+            {history.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4">No sync events yet.</p>
+            ) : (
+              <ol className="flex flex-col gap-2">
+                {history.map((h) => (
+                  <li key={h.id} className="text-xs flex items-center justify-between border-b border-border pb-2 last:border-0">
+                    <span><span className="font-semibold">{h.count}</span> task{h.count !== 1 && "s"} · {h.trigger}</span>
+                    <span className="text-muted-foreground">{format(new Date(h.at), "MMM d, HH:mm")}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
         </aside>
       </div>
     </AdminShell>

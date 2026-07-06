@@ -5,6 +5,7 @@ import { BLOCKS } from "@/features/blocks/data";
 import type { Task } from "@/features/tasks/types";
 import { useTasksStore } from "@/features/tasks/store";
 import { useSyncStore } from "@/features/sync/store";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getUser } from "@/features/users/data";
 
 async function fileToDataUrl(file: File, maxDim = 1200): Promise<string> {
@@ -44,6 +45,8 @@ export function TaskForm({
   const navigate = useNavigate();
   const create = useTasksStore((s) => s.createTask);
   const online = useSyncStore((s) => s.online);
+  const patchDebug = useSyncStore((s) => s.patchDebug);
+  const pushDebugEvent = useSyncStore((s) => s.pushDebugEvent);
   const user = getUser(creatorId);
   const isResidentPortal = mode === "resident";
 
@@ -77,6 +80,22 @@ export function TaskForm({
 
   function submit() {
     if (!canSubmit) return;
+    // #region debug-point A:submit-entry
+    patchDebug({
+      lastPush: {
+        at: new Date().toISOString(),
+        trigger: "submit",
+        status: "started",
+        pendingCount: useTasksStore.getState().tasks.filter((task) => !task.synced).length,
+        message: "[DEBUG] Task form submit started",
+      },
+    });
+    pushDebugEvent({
+      scope: "submit",
+      status: "info",
+      message: `[DEBUG] Submit started mode=${mode} online=${online} hasPhoto=${Boolean(photo)} configured=${isSupabaseConfigured}`,
+    });
+    // #endregion
     const generatedTitle = buildTaskTitle(desc.trim(), blockId, flatId);
     const t = create(
       {
@@ -91,6 +110,23 @@ export function TaskForm({
       },
       creatorId,
     );
+    // #region debug-point E:submit-created-local
+    patchDebug({
+      lastPush: {
+        at: new Date().toISOString(),
+        trigger: "submit",
+        status: "success",
+        pendingCount: useTasksStore.getState().tasks.filter((task) => !task.synced).length,
+        syncedCount: t.synced ? 1 : 0,
+        message: `[DEBUG] Task created locally with synced=${t.synced}`,
+      },
+    });
+    pushDebugEvent({
+      scope: "submit",
+      status: t.synced ? "success" : "skipped",
+      message: `[DEBUG] Local task created id=${t.id} synced=${t.synced} photo=${Boolean(t.photo)}`,
+    });
+    // #endregion
     if (onCreated) {
       onCreated(t);
       return;
