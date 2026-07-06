@@ -204,15 +204,37 @@ export const useTasksStore = create<TasksState>()(
 
       hydrateFromServer: (snapshot) => {
         const state = get();
-        if (state.tasks.some((task) => !task.synced)) {
-          return false;
+
+        const mergedTasks = new Map(state.tasks.map((t) => [t.id, t] as const));
+        for (const serverTask of snapshot.tasks) {
+          const local = mergedTasks.get(serverTask.id);
+          if (!local) {
+            mergedTasks.set(serverTask.id, serverTask);
+            continue;
+          }
+
+          const localUpdatedAt = Date.parse(local.updatedAt);
+          const serverUpdatedAt = Date.parse(serverTask.updatedAt);
+          const canTrustServer = local.synced && Number.isFinite(localUpdatedAt) && Number.isFinite(serverUpdatedAt);
+
+          if (canTrustServer && serverUpdatedAt > localUpdatedAt) {
+            mergedTasks.set(serverTask.id, serverTask);
+          }
         }
+
+        const mergedComments = new Map(state.comments.map((c) => [c.id, c] as const));
+        for (const c of snapshot.comments) mergedComments.set(c.id, c);
+
+        const mergedActivity = new Map(state.activity.map((a) => [a.id, a] as const));
+        for (const a of snapshot.activity) mergedActivity.set(a.id, a);
+
         set({
-          tasks: snapshot.tasks,
-          comments: snapshot.comments,
-          activity: snapshot.activity,
+          tasks: Array.from(mergedTasks.values()).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+          comments: Array.from(mergedComments.values()).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+          activity: Array.from(mergedActivity.values()).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
           hydratedFromServerAt: now(),
         });
+
         return true;
       },
 
