@@ -42,6 +42,14 @@ interface TasksState {
 
 const now = () => new Date().toISOString();
 
+const markTaskPending = <T extends Task>(task: T, patch: Partial<Task> = {}): T => ({
+  ...task,
+  ...patch,
+  updatedAt: now(),
+  synced: false,
+  syncedAt: undefined,
+});
+
 const logActivity = (
   state: TasksState,
   entry: Omit<ActivityEntry, "id" | "createdAt">,
@@ -59,16 +67,17 @@ export const useTasksStore = create<TasksState>()(
       hydratedFromServerAt: undefined,
 
       createTask: (input, actorId) => {
+        const ts = now();
         const task: Task = {
           ...input,
           id: nanoid(),
           status: "NEW",
           priority: null,
           assigneeId: null,
-          createdAt: now(),
-          updatedAt: now(),
-          synced: navigator.onLine,
-          syncedAt: navigator.onLine ? now() : undefined,
+          createdAt: ts,
+          updatedAt: ts,
+          synced: false,
+          syncedAt: undefined,
         };
         set((s) => ({
           tasks: [task, ...s.tasks],
@@ -85,7 +94,7 @@ export const useTasksStore = create<TasksState>()(
       setPriority: (taskId, priority, actorId) =>
         set((s) => ({
           tasks: s.tasks.map((t) =>
-            t.id === taskId ? { ...t, priority, updatedAt: now() } : t,
+            t.id === taskId ? markTaskPending(t, { priority }) : t,
           ),
           activity: logActivity(s, {
             taskId,
@@ -101,7 +110,7 @@ export const useTasksStore = create<TasksState>()(
           const reassigning = !!prev?.assigneeId && prev.assigneeId !== assigneeId;
           return {
             tasks: s.tasks.map((t) =>
-              t.id === taskId ? { ...t, assigneeId, updatedAt: now() } : t,
+              t.id === taskId ? markTaskPending(t, { assigneeId }) : t,
             ),
             activity: logActivity(s, {
               taskId,
@@ -117,7 +126,7 @@ export const useTasksStore = create<TasksState>()(
       setStatus: (taskId, status, actorId) =>
         set((s) => ({
           tasks: s.tasks.map((t) =>
-            t.id === taskId ? { ...t, status, updatedAt: now() } : t,
+            t.id === taskId ? markTaskPending(t, { status }) : t,
           ),
           activity: logActivity(s, {
             taskId,
@@ -130,7 +139,7 @@ export const useTasksStore = create<TasksState>()(
       acceptCompletion: (taskId, actorId) =>
         set((s) => ({
           tasks: s.tasks.map((t) =>
-            t.id === taskId ? { ...t, status: "DONE", updatedAt: now() } : t,
+            t.id === taskId ? markTaskPending(t, { status: "DONE" }) : t,
           ),
           activity: logActivity(s, {
             taskId,
@@ -143,7 +152,7 @@ export const useTasksStore = create<TasksState>()(
       reopen: (taskId, actorId) =>
         set((s) => ({
           tasks: s.tasks.map((t) =>
-            t.id === taskId ? { ...t, status: "DOING", updatedAt: now() } : t,
+            t.id === taskId ? markTaskPending(t, { status: "DOING" }) : t,
           ),
           activity: logActivity(s, {
             taskId,
@@ -155,6 +164,9 @@ export const useTasksStore = create<TasksState>()(
 
       addComment: (taskId, text, actorId) =>
         set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId ? markTaskPending(t) : t,
+          ),
           comments: [
             { id: nanoid(), taskId, authorId: actorId, text, createdAt: now() },
             ...s.comments,
@@ -171,7 +183,9 @@ export const useTasksStore = create<TasksState>()(
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === taskId
-              ? { ...t, extraPhotos: [...(t.extraPhotos ?? []), dataUrl], updatedAt: now() }
+              ? markTaskPending(t, {
+                  extraPhotos: [...(t.extraPhotos ?? []), dataUrl],
+                })
               : t,
           ),
           activity: logActivity(s, {

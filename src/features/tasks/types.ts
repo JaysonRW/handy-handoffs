@@ -54,6 +54,7 @@ export interface Task {
   title: string;
   description: string;
   photo?: string; // data URL
+  photoPath?: string;
   extraPhotos?: string[];
   blockId: string;
   flatId: string;

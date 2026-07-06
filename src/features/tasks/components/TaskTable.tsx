@@ -10,6 +10,7 @@ import { StatusBadge } from "./StatusBadge";
 import { Avatar } from "@/features/users/Avatar";
 import { getBlock, getFlat } from "@/features/blocks/data";
 import { getUser } from "@/features/users/data";
+import { TaskSyncNowButton } from "@/features/sync/SyncIndicator";
 
 export function TaskTable({
   tasks,
@@ -105,18 +106,23 @@ export function TaskTable({
                     </td>
                     {canQuick && (
                       <td className="px-4 py-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setQuick((prev) => ({
-                              taskId: prev.taskId === t.id ? null : t.id,
-                              text: prev.taskId === t.id ? "" : "",
-                            }));
-                          }}
-                          className={`rounded-md px-3 py-2 text-xs font-semibold border focus-ring ${open ? "bg-surface-2 border-primary/60" : "bg-surface-2 border-border hover:border-primary/50"}`}
-                        >
-                          {open ? "Close" : "Comment"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setQuick((prev) => ({
+                                taskId: prev.taskId === t.id ? null : t.id,
+                                text: prev.taskId === t.id ? "" : "",
+                              }));
+                            }}
+                            className={`rounded-md px-3 py-2 text-xs font-semibold border focus-ring ${open ? "bg-surface-2 border-primary/60" : "bg-surface-2 border-border hover:border-primary/50"}`}
+                          >
+                            {open ? "Close" : "Comment"}
+                          </button>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <TaskSyncNowButton taskId={t.id} />
+                          </div>
+                        </div>
                       </td>
                     )}
                   </tr>

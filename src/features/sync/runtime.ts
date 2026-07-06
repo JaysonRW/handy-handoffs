@@ -1,17 +1,197 @@
 import { useEffect } from "react";
 import { useSyncStore } from "./store";
 import { selectPendingSync, useTasksStore } from "@/features/tasks/store";
-import { fetchTaskSnapshotFromSupabase } from "@/features/tasks/supabase";
+import {
+  fetchTaskSnapshotFromSupabase,
+  upsertTaskBundleToSupabase,
+} from "@/features/tasks/supabase";
 import { isSupabaseConfigured, supabaseEnvStatus } from "@/lib/supabase/client";
 
-/**
- * Watches navigator online/offline and runs a fake "sync" that flips
- * locally-created tasks to synced. Real backends would POST here.
- */
+type SyncRunResult = {
+  syncedIds: string[];
+  failed: Array<{ taskId: string; message: string }>;
+  skippedReason?: string;
+};
+
+async function hydrateFromServer(reason: "boot" | "poll" | "after-sync") {
+  const { pushDebugEvent } = useSyncStore.getState();
+
+  try {
+    const snapshot = await fetchTaskSnapshotFromSupabase();
+    if (!snapshot) return false;
+
+    pushDebugEvent({
+      scope: "runtime",
+      status: "success",
+      message: `[DEBUG] Applied ${reason} snapshot with ${snapshot.tasks.length} task(s)`,
+    });
+    useTasksStore.getState().hydrateFromServer(snapshot);
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    pushDebugEvent({
+      scope: "runtime",
+      status: "error",
+      message: `[DEBUG] ${reason} hydrate failed: ${message}`,
+    });
+    return false;
+  }
+}
+
+function getTasksForSync(taskIds?: string[]) {
+  const state = useTasksStore.getState();
+  if (!taskIds || taskIds.length === 0) {
+    return selectPendingSync(state);
+  }
+
+  const ids = new Set(taskIds);
+  return state.tasks.filter((task) => ids.has(task.id));
+}
+
+export async function syncTasks(taskIds?: string[], trigger: "auto" | "manual" | "submit" | "task" = "manual"): Promise<SyncRunResult> {
+  const syncStore = useSyncStore.getState();
+  const tasks = getTasksForSync(taskIds);
+
+  if (syncStore.syncing) {
+    const skippedReason = "Ja existe uma sincronizacao em andamento.";
+    return { syncedIds: [], failed: [], skippedReason };
+  }
+
+  if (!syncStore.online) {
+    const skippedReason = "Sem conexao com a internet.";
+    syncStore.patchDebug({
+      lastPush: {
+        at: new Date().toISOString(),
+        trigger,
+        status: "skipped",
+        pendingCount: tasks.length,
+        message: skippedReason,
+      },
+    });
+    return { syncedIds: [], failed: [], skippedReason };
+  }
+
+  if (!isSupabaseConfigured) {
+    const skippedReason = "Supabase nao esta configurado neste build.";
+    syncStore.patchDebug({
+      lastPush: {
+        at: new Date().toISOString(),
+        trigger,
+        status: "error",
+        pendingCount: tasks.length,
+        message: skippedReason,
+      },
+    });
+    syncStore.pushDebugEvent({
+      scope: "runtime",
+      status: "error",
+      message: `[DEBUG] Sync blocked: ${skippedReason}`,
+    });
+    for (const task of tasks) {
+      syncStore.setTaskState(task.id, { status: "error", message: skippedReason });
+    }
+    return {
+      syncedIds: [],
+      failed: tasks.map((task) => ({ taskId: task.id, message: skippedReason })),
+      skippedReason,
+    };
+  }
+
+  if (tasks.length === 0) {
+    const skippedReason = "Nenhuma task elegivel para sincronizacao.";
+    syncStore.patchDebug({
+      lastPush: {
+        at: new Date().toISOString(),
+        trigger,
+        status: "skipped",
+        pendingCount: 0,
+        message: skippedReason,
+      },
+    });
+    return { syncedIds: [], failed: [], skippedReason };
+  }
+
+  syncStore.setSyncing(true);
+  syncStore.patchDebug({
+    lastPush: {
+      at: new Date().toISOString(),
+      trigger,
+      status: "started",
+      pendingCount: tasks.length,
+      message: `[DEBUG] Starting real Supabase sync for ${tasks.length} task(s)`,
+    },
+  });
+  syncStore.pushDebugEvent({
+    scope: "runtime",
+    status: "info",
+    message: `[DEBUG] Starting ${trigger} sync for ${tasks.length} task(s)`,
+  });
+
+  const syncedIds: string[] = [];
+  const failed: Array<{ taskId: string; message: string }> = [];
+  const state = useTasksStore.getState();
+
+  try {
+    for (const task of tasks) {
+      syncStore.setTaskState(task.id, { status: "syncing", message: "Sincronizando task..." });
+
+      try {
+        await upsertTaskBundleToSupabase({
+          task,
+          comments: state.comments.filter((comment) => comment.taskId === task.id),
+          activity: state.activity.filter((entry) => entry.taskId === task.id),
+        });
+
+        syncedIds.push(task.id);
+        syncStore.setTaskState(task.id, { status: "success", message: "Task sincronizada." });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        failed.push({ taskId: task.id, message });
+        syncStore.setTaskState(task.id, { status: "error", message });
+        syncStore.pushDebugEvent({
+          scope: "runtime",
+          status: "error",
+          message: `[DEBUG] Task ${task.id} failed to sync: ${message}`,
+        });
+      }
+    }
+
+    if (syncedIds.length > 0) {
+      useTasksStore.getState().markSynced(syncedIds);
+      syncStore.recordSync(syncedIds.length, trigger);
+      await hydrateFromServer("after-sync");
+    }
+
+    syncStore.patchDebug({
+      lastPush: {
+        at: new Date().toISOString(),
+        trigger,
+        status: failed.length > 0 ? "error" : "success",
+        pendingCount: tasks.length,
+        syncedCount: syncedIds.length,
+        message:
+          failed.length > 0
+            ? `${syncedIds.length} task(s) sincronizadas e ${failed.length} falharam.`
+            : `${syncedIds.length} task(s) sincronizadas com sucesso.`,
+      },
+    });
+    syncStore.pushDebugEvent({
+      scope: "runtime",
+      status: failed.length > 0 ? "error" : "success",
+      message:
+        failed.length > 0
+          ? `[DEBUG] Sync finished with ${syncedIds.length} success(es) and ${failed.length} failure(s)`
+          : `[DEBUG] Sync finished successfully for ${syncedIds.length} task(s)`,
+    });
+
+    return { syncedIds, failed };
+  } finally {
+    syncStore.setSyncing(false);
+  }
+}
+
 export function useSyncRuntime() {
   const setOnline = useSyncStore((s) => s.setOnline);
-  const setSyncing = useSyncStore((s) => s.setSyncing);
-  const recordSync = useSyncStore((s) => s.recordSync);
   const patchDebug = useSyncStore((s) => s.patchDebug);
   const pushDebugEvent = useSyncStore((s) => s.pushDebugEvent);
   const online = useSyncStore((s) => s.online);
@@ -48,35 +228,15 @@ export function useSyncRuntime() {
 
     let cancelled = false;
 
-    async function hydrateFromServer() {
-      try {
-        const snapshot = await fetchTaskSnapshotFromSupabase();
-        if (!snapshot || cancelled) return;
-        // #region debug-point A:hydrate-apply
-        pushDebugEvent({
-          scope: "runtime",
-          status: "success",
-          message: `[DEBUG] Applying server snapshot with ${snapshot.tasks.length} tasks`,
-        });
-        // #endregion
-        useTasksStore.getState().hydrateFromServer(snapshot);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        // #region debug-point C:hydrate-error
-        pushDebugEvent({
-          scope: "runtime",
-          status: "error",
-          message: `[DEBUG] Runtime hydrate failed: ${message}`,
-        });
-        // #endregion
-        throw error;
-      }
-    }
-
-    void hydrateFromServer();
+    void hydrateFromServer("boot");
+    const intervalId = window.setInterval(() => {
+      if (cancelled) return;
+      void hydrateFromServer("poll");
+    }, 15000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, [online]);
 
@@ -84,98 +244,12 @@ export function useSyncRuntime() {
     if (!online) return;
     const pending = selectPendingSync(useTasksStore.getState());
     if (pending.length === 0) return;
-    // #region debug-point E:fake-auto-sync
-    patchDebug({
-      lastPush: {
-        at: new Date().toISOString(),
-        trigger: "auto",
-        status: "started",
-        pendingCount: pending.length,
-        message: "[DEBUG] Auto sync entered fake local markSynced path",
-      },
-    });
-    pushDebugEvent({
-      scope: "runtime",
-      status: "info",
-      message: `[DEBUG] Auto sync started with ${pending.length} pending task(s); configured=${isSupabaseConfigured}`,
-    });
-    // #endregion
-    setSyncing(true);
-    const ids = pending.map((p) => p.id);
-    const t = setTimeout(() => {
-      useTasksStore.getState().markSynced(ids);
-      recordSync(ids.length, "auto");
-      // #region debug-point E:fake-auto-sync-success
-      patchDebug({
-        lastPush: {
-          at: new Date().toISOString(),
-          trigger: "auto",
-          status: "success",
-          pendingCount: pending.length,
-          syncedCount: ids.length,
-          message: "[DEBUG] Auto sync only marked local tasks as synced",
-        },
-      });
-      pushDebugEvent({
-        scope: "runtime",
-        status: "success",
-        message: `[DEBUG] Auto sync completed via local-only markSynced for ${ids.length} task(s)`,
-      });
-      // #endregion
-      setSyncing(false);
-    }, 900);
-    return () => {
-      clearTimeout(t);
-      setSyncing(false);
-    };
-  }, [online, patchDebug, pushDebugEvent, recordSync, setSyncing]);
+    void syncTasks(undefined, "auto");
+  }, [online]);
 }
 
 export function triggerManualSync(taskIds?: string[]) {
-  const pending = selectPendingSync(useTasksStore.getState()).filter((task) =>
-    !taskIds || taskIds.includes(task.id),
-  );
-  if (!useSyncStore.getState().online || pending.length === 0) return;
-  // #region debug-point A:manual-sync-click
-  useSyncStore.getState().patchDebug({
-    lastPush: {
-      at: new Date().toISOString(),
-      trigger: "manual",
-      status: "started",
-      pendingCount: pending.length,
-      message: "[DEBUG] Manual sync button triggered fake local markSynced path",
-    },
-  });
-  useSyncStore.getState().pushDebugEvent({
-    scope: "ui",
-    status: "info",
-    message: `[DEBUG] Manual sync clicked with ${pending.length} pending task(s); configured=${isSupabaseConfigured}`,
-  });
-  // #endregion
-  useSyncStore.getState().setSyncing(true);
-  setTimeout(() => {
-    const ids = pending.map((p) => p.id);
-    useTasksStore.getState().markSynced(ids);
-    useSyncStore.getState().recordSync(ids.length, "manual");
-    // #region debug-point A:manual-sync-complete
-    useSyncStore.getState().patchDebug({
-      lastPush: {
-        at: new Date().toISOString(),
-        trigger: "manual",
-        status: "success",
-        pendingCount: pending.length,
-        syncedCount: ids.length,
-        message: "[DEBUG] Manual sync finished without calling Supabase write",
-      },
-    });
-    useSyncStore.getState().pushDebugEvent({
-      scope: "ui",
-      status: "success",
-      message: `[DEBUG] Manual sync completed via local-only markSynced for ${ids.length} task(s)`,
-    });
-    // #endregion
-    useSyncStore.getState().setSyncing(false);
-  }, 700);
+  return syncTasks(taskIds, taskIds && taskIds.length > 0 ? "task" : "manual");
 }
 
 /** Dev/demo helper: force-toggle a fake offline mode (overrides navigator). */

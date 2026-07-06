@@ -3,6 +3,7 @@ import type { Priority, Task } from "@/features/tasks/types";
 import { useTasksStore } from "@/features/tasks/store";
 import { cn } from "@/lib/utils";
 import { TaskCard } from "./TaskCard";
+import { TaskSyncNowButton } from "@/features/sync/SyncIndicator";
 
 export function TaskKanban({
   tasks,
@@ -96,6 +97,9 @@ export function TaskKanban({
                               >
                                 Follow-up
                               </button>
+                            </div>
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <TaskSyncNowButton taskId={t.id} className="w-full justify-center" />
                             </div>
 
                             {open && (

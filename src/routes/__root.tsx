@@ -16,6 +16,7 @@ import "@fontsource/inter/800.css";
 import "@fontsource/jetbrains-mono/500.css";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { useSyncRuntime } from "@/features/sync/runtime";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -85,6 +86,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <SyncBoot />
       <Outlet />
+      <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
 }

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { CloudOff, Cloud, Loader2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { useSyncStore } from "./store";
 import { selectPendingSync, useTasksStore } from "@/features/tasks/store";
 import { triggerManualSync } from "./runtime";
@@ -58,6 +59,39 @@ export function SyncNowButton({ className, taskIds }: { className?: string; task
     >
       <RefreshCw className={cn("size-3.5", syncing && "animate-spin")} />
       Sync now
+    </button>
+  );
+}
+
+export function TaskSyncNowButton({ className, taskId }: { className?: string; taskId: string }) {
+  const online = useSyncStore((s) => s.online);
+  const syncing = useSyncStore((s) => s.syncing);
+  const taskState = useSyncStore((s) => s.taskStates[taskId]);
+  const busy = taskState?.status === "syncing";
+
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        const result = await triggerManualSync([taskId]);
+
+        if (result.syncedIds.includes(taskId)) {
+          toast.success("Task sincronizada com sucesso.");
+          return;
+        }
+
+        const failure = result.failed.find((entry) => entry.taskId === taskId);
+        toast.error(failure?.message ?? result.skippedReason ?? "Nao foi possivel sincronizar esta task.");
+      }}
+      disabled={!online || busy || syncing}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-foreground focus-ring hover:border-primary/50 disabled:opacity-40",
+        className,
+      )}
+      title={!online ? "Sync indisponivel enquanto estiver offline" : "Sincronizar esta task agora"}
+    >
+      <RefreshCw className={cn("size-3.5", (busy || syncing) && "animate-spin")} />
+      {busy ? "Syncing..." : "Sync now"}
     </button>
   );
 }

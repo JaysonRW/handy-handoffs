@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Camera, Loader2, X } from "lucide-react";
+import { toast } from "sonner";
 import { BLOCKS } from "@/features/blocks/data";
 import type { Task } from "@/features/tasks/types";
 import { useTasksStore } from "@/features/tasks/store";
 import { useSyncStore } from "@/features/sync/store";
+import { triggerManualSync } from "@/features/sync/runtime";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getUser } from "@/features/users/data";
 
@@ -52,6 +54,7 @@ export function TaskForm({
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [busyPhoto, setBusyPhoto] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [reporterName, setReporterName] = useState("");
   const [blockId, setBlockId] = useState("");
   const [flatId, setFlatId] = useState("");
@@ -78,8 +81,9 @@ export function TaskForm({
     }
   }
 
-  function submit() {
-    if (!canSubmit) return;
+  async function submit() {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
     // #region debug-point A:submit-entry
     patchDebug({
       lastPush: {
@@ -127,12 +131,27 @@ export function TaskForm({
       message: `[DEBUG] Local task created id=${t.id} synced=${t.synced} photo=${Boolean(t.photo)}`,
     });
     // #endregion
-    if (onCreated) {
-      onCreated(t);
-      return;
-    }
-    if (redirectTo) {
-      navigate({ to: redirectTo.replace("{id}", t.id) as any });
+    try {
+      if (online && isSupabaseConfigured) {
+        const result = await triggerManualSync([t.id]);
+        const failure = result.failed.find((entry) => entry.taskId === t.id);
+
+        if (failure) {
+          toast.error(failure.message);
+        } else if (result.syncedIds.includes(t.id)) {
+          toast.success("Task criada e sincronizada.");
+        }
+      }
+
+      if (onCreated) {
+        onCreated(t);
+        return;
+      }
+      if (redirectTo) {
+        navigate({ to: redirectTo.replace("{id}", t.id) as any });
+      }
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -233,16 +252,23 @@ export function TaskForm({
         )}
         <button
           onClick={submit}
-          disabled={!canSubmit}
+          disabled={!canSubmit || submitting}
           className="rounded-md bg-primary text-primary-foreground px-5 py-2.5 text-sm font-semibold shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none hover:bg-primary/90 focus-ring"
         >
-          {isResidentPortal
-            ? online
+          {submitting ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="size-4 animate-spin" />
+              Salvando...
+            </span>
+          ) : isResidentPortal ? (
+            online
               ? "Send report"
               : "Save offline report"
-            : online
-              ? "Submit task"
-              : "Save offline"}
+          ) : online ? (
+            "Submit task"
+          ) : (
+            "Save offline"
+          )}
         </button>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { Avatar } from "@/features/users/Avatar";
 import { getBlock, getFlat } from "@/features/blocks/data";
 import { useTasksStore } from "@/features/tasks/store";
 import { cn } from "@/lib/utils";
+import { TaskSyncNowButton } from "@/features/sync/SyncIndicator";
 
 export function TaskCard({
   task,
@@ -89,13 +90,15 @@ export function TaskCard({
         </div>
       </div>
 
-      {actions && (
+      <div className="mt-3 pt-3 border-t border-border/60 grid gap-2">
         <div
-          className="mt-3 pt-3 border-t border-border/60"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
         >
-          {actions}
+          <TaskSyncNowButton taskId={task.id} className="w-full justify-center" />
         </div>
-      )}
+        {actions}
+      </div>
     </div>
   );
 }
