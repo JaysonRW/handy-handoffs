@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useSyncStore } from "./store";
 import { selectPendingSync, useTasksStore } from "@/features/tasks/store";
+import { fetchTaskSnapshotFromSupabase } from "@/features/tasks/supabase";
 
 /**
  * Watches navigator online/offline and runs a fake "sync" that flips
@@ -23,6 +24,24 @@ export function useSyncRuntime() {
       window.removeEventListener("offline", off);
     };
   }, [setOnline]);
+
+  useEffect(() => {
+    if (!online) return;
+
+    let cancelled = false;
+
+    async function hydrateFromServer() {
+      const snapshot = await fetchTaskSnapshotFromSupabase();
+      if (!snapshot || cancelled) return;
+      useTasksStore.getState().hydrateFromServer(snapshot);
+    }
+
+    void hydrateFromServer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [online]);
 
   useEffect(() => {
     if (!online) return;

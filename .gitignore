@@ -18,6 +18,9 @@ dist-ssr
 .dbg/
 debug-*.md
 *.local
+.env
+.env.*
+!.env.example
 
 # Wrangler / Cloudflare
 .wrangler/

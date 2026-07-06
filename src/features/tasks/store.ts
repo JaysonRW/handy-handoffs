@@ -16,6 +16,7 @@ interface TasksState {
   tasks: Task[];
   comments: Comment[];
   activity: ActivityEntry[];
+  hydratedFromServerAt?: string;
   /** Local IDs queued for sync (not yet "synced") */
   // derived from tasks.synced flag; no separate queue needed
 
@@ -31,6 +32,11 @@ interface TasksState {
   addComment: (taskId: string, text: string, actorId: string) => void;
   addPhoto: (taskId: string, dataUrl: string, actorId: string) => void;
   markSynced: (taskIds: string[]) => void;
+  hydrateFromServer: (snapshot: {
+    tasks: Task[];
+    comments: Comment[];
+    activity: ActivityEntry[];
+  }) => boolean;
   reset: () => void;
 }
 
@@ -50,6 +56,7 @@ export const useTasksStore = create<TasksState>()(
       tasks: [],
       comments: [],
       activity: [],
+      hydratedFromServerAt: undefined,
 
       createTask: (input, actorId) => {
         const task: Task = {
@@ -195,9 +202,28 @@ export const useTasksStore = create<TasksState>()(
           };
         }),
 
+      hydrateFromServer: (snapshot) => {
+        const state = get();
+        if (state.tasks.some((task) => !task.synced)) {
+          return false;
+        }
+        set({
+          tasks: snapshot.tasks,
+          comments: snapshot.comments,
+          activity: snapshot.activity,
+          hydratedFromServerAt: now(),
+        });
+        return true;
+      },
+
       reset: () => {
         const seeded = seedTasks();
-        set({ tasks: seeded.tasks, comments: seeded.comments, activity: seeded.activity });
+        set({
+          tasks: seeded.tasks,
+          comments: seeded.comments,
+          activity: seeded.activity,
+          hydratedFromServerAt: undefined,
+        });
       },
     }),
     {
