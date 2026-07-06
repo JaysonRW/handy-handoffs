@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { StaffShell } from "@/components/layout/StaffShell";
+import { SyncNowButton } from "@/features/sync/SyncIndicator";
 import { getUser } from "@/features/users/data";
 import { selectVisibleForStaff, useTasksStore } from "@/features/tasks/store";
 import { TaskFiltersBar, useFilteredTasks, useTaskFiltersState } from "@/features/tasks/components/TaskFilters";
@@ -26,7 +27,12 @@ function StaffTasks() {
   }
 
   return (
-    <StaffShell userId={userId} title="My tasks" subtitle={`${filtered.length} of ${tasks.length} · ${user.role.toLowerCase()}`}>
+    <StaffShell
+      userId={userId}
+      title="My tasks"
+      subtitle={`${filtered.length} of ${tasks.length} · ${user.role.toLowerCase()}`}
+      actions={<SyncNowButton taskIds={tasks.map((task) => task.id)} />}
+    >
       <div className="max-w-3xl mx-auto px-4 pt-4 flex flex-col gap-3">
         <TaskFiltersBar value={filters} onChange={setFilters} hideAssignee={user.role === "CLEANER"} />
         {filtered.length === 0 ? (

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, Plus, Rows3 } from "lucide-react";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { BLOCKS } from "@/features/blocks/data";
+import { SyncNowButton } from "@/features/sync/SyncIndicator";
 import { useTasksStore } from "@/features/tasks/store";
 import { TaskFiltersBar, defaultFilters, useFilteredTasks, useTaskFiltersState } from "@/features/tasks/components/TaskFilters";
 import { TaskKanban } from "@/features/tasks/components/TaskKanban";
@@ -65,6 +66,7 @@ function AdminTasks() {
       subtitle={`${filtered.length} of ${tasks.length} tasks`}
       actions={
         <div className="flex items-center gap-2">
+          <SyncNowButton />
           <Link
             to="/admin/new"
             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground focus-ring hover:bg-primary/90"

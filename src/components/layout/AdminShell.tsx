@@ -1,6 +1,7 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import {
+  ArrowLeft,
   LayoutDashboard,
   ListChecks,
   Building2,
@@ -22,10 +23,32 @@ const items: NavItem[] = [
   { to: "/admin/sync", label: "Sync log", icon: History },
 ];
 
-export function AdminShell({ children, title, subtitle, actions }: { children: React.ReactNode; title: string; subtitle?: string; actions?: React.ReactNode }) {
+export function AdminShell({
+  children,
+  title,
+  subtitle,
+  actions,
+  backTo,
+}: {
+  children: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  actions?: React.ReactNode;
+  backTo?: string;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
   const logout = useAdminAuth((s) => s.logout);
   const pending = useTasksStore((s) => selectPendingSync(s).length);
+  const showBack = pathname !== "/admin";
+
+  function handleBack() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    void navigate({ to: backTo ?? "/admin" });
+  }
 
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[260px_1fr]">
@@ -77,9 +100,21 @@ export function AdminShell({ children, title, subtitle, actions }: { children: R
       <main className="flex flex-col min-w-0">
         <header className="sticky top-0 z-20 bg-background/80 backdrop-blur border-b border-border">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-8 sm:py-5">
-            <div className="min-w-0">
-              <h1 className="truncate text-xl sm:text-2xl font-bold">{title}</h1>
-              {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
+            <div className="min-w-0 flex items-start gap-3">
+              {showBack ? (
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface-2 text-muted-foreground hover:bg-surface focus-ring"
+                  title="Back"
+                >
+                  <ArrowLeft className="size-4" />
+                </button>
+              ) : null}
+              <div className="min-w-0">
+                <h1 className="truncate text-xl sm:text-2xl font-bold">{title}</h1>
+                {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
+              </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">{actions}</div>
           </div>

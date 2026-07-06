@@ -131,8 +131,10 @@ export function useSyncRuntime() {
   }, [online, patchDebug, pushDebugEvent, recordSync, setSyncing]);
 }
 
-export function triggerManualSync() {
-  const pending = selectPendingSync(useTasksStore.getState());
+export function triggerManualSync(taskIds?: string[]) {
+  const pending = selectPendingSync(useTasksStore.getState()).filter((task) =>
+    !taskIds || taskIds.includes(task.id),
+  );
   if (!useSyncStore.getState().online || pending.length === 0) return;
   // #region debug-point A:manual-sync-click
   useSyncStore.getState().patchDebug({

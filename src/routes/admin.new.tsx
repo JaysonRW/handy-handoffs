@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AdminShell } from "@/components/layout/AdminShell";
+import { SyncNowButton } from "@/features/sync/SyncIndicator";
 import { TaskForm } from "@/features/tasks/components/TaskForm";
 
 export const Route = createFileRoute("/admin/new")({
@@ -12,6 +13,8 @@ function AdminNewTask() {
     <AdminShell
       title="Create task"
       subtitle="Register a new issue for later triage and assignment"
+      actions={<SyncNowButton />}
+      backTo="/admin/tasks"
     >
       <TaskForm creatorId="u_admin" redirectTo="/admin/tasks/{id}" mode="admin" />
     </AdminShell>

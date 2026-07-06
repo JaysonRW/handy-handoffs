@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
-import { CloudOff, Cloud, Loader2 } from "lucide-react";
+import { CloudOff, Cloud, Loader2, RefreshCw } from "lucide-react";
 import { useSyncStore } from "./store";
+import { selectPendingSync, useTasksStore } from "@/features/tasks/store";
+import { triggerManualSync } from "./runtime";
 
 export function SyncIndicator({ className }: { className?: string }) {
   const online = useSyncStore((s) => s.online);
@@ -27,5 +29,35 @@ export function SyncIndicator({ className }: { className?: string }) {
       <Cloud className="size-3" />
       Online
     </span>
+  );
+}
+
+export function SyncNowButton({ className, taskIds }: { className?: string; taskIds?: string[] }) {
+  const online = useSyncStore((s) => s.online);
+  const syncing = useSyncStore((s) => s.syncing);
+  const pendingCount = useTasksStore((s) =>
+    selectPendingSync(s).filter((task) => !taskIds || taskIds.includes(task.id)).length,
+  );
+
+  return (
+    <button
+      type="button"
+      onClick={() => triggerManualSync(taskIds)}
+      disabled={!online || syncing || pendingCount === 0}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground focus-ring hover:bg-primary/90 disabled:opacity-40",
+        className,
+      )}
+      title={
+        !online
+          ? "Sync unavailable while offline"
+          : pendingCount === 0
+            ? "No pending tasks to sync"
+            : "Sync pending tasks now"
+      }
+    >
+      <RefreshCw className={cn("size-3.5", syncing && "animate-spin")} />
+      Sync now
+    </button>
   );
 }

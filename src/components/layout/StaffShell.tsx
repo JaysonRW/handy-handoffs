@@ -1,7 +1,7 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Home, Plus, ListChecks, History, LogOut, CloudOff } from "lucide-react";
+import { ArrowLeft, Home, Plus, ListChecks, History, LogOut, CloudOff } from "lucide-react";
 import { Avatar } from "@/features/users/Avatar";
 import { canCreateTaskFromStaffPortal, getUser } from "@/features/users/data";
 import { SyncIndicator } from "@/features/sync/SyncIndicator";
@@ -13,14 +13,17 @@ export function StaffShell({
   title,
   subtitle,
   actions,
+  backTo,
 }: {
   userId: string;
   children: React.ReactNode;
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
+  backTo?: string;
 }) {
   const user = getUser(userId);
+  const navigate = useNavigate();
   const canCreate = user ? canCreateTaskFromStaffPortal(user.role) : false;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const allTasks = useTasksStore((s) => s.tasks);
@@ -39,6 +42,16 @@ export function StaffShell({
     ...(canCreate ? [{ to: `/staff/${userId}/new`, label: "New", icon: Plus, primary: true }] : []),
     { to: `/staff/${userId}/sync`, label: "Sync", icon: History, badge: pending || undefined },
   ];
+  const homePath = `/staff/${userId}`;
+  const showBack = pathname !== homePath;
+
+  function handleBack() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    void navigate({ to: backTo ?? homePath });
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -53,9 +66,21 @@ export function StaffShell({
               </div>
             </div>
           </Link>
-          <div className="min-w-0">
-            <h1 className="truncate text-lg sm:text-xl font-bold">{title}</h1>
-            {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
+          <div className="min-w-0 flex items-start gap-3">
+            {showBack ? (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface-2 text-muted-foreground hover:bg-surface focus-ring"
+                title="Back"
+              >
+                <ArrowLeft className="size-4" />
+              </button>
+            ) : null}
+            <div className="min-w-0">
+              <h1 className="truncate text-lg sm:text-xl font-bold">{title}</h1>
+              {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <SyncIndicator />

@@ -44,7 +44,7 @@ function StaffSync() {
               {online ? "Simulate offline" : "Go online"}
             </button>
             <button
-              onClick={triggerManualSync}
+              onClick={() => triggerManualSync(pending.map((task) => task.id))}
               disabled={!online || pending.length === 0 || syncing}
               className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold focus-ring inline-flex items-center gap-1.5 disabled:opacity-40"
             >
