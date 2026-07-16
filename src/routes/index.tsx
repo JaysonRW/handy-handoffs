@@ -1,7 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Building2, ShieldCheck, Wrench, CloudOff, House } from "lucide-react";
-import { usersByRole } from "@/features/users/data";
-import { Avatar } from "@/features/users/Avatar";
+import { ArrowRight, Building2, CloudOff, House, ShieldCheck, Sparkles, Wrench } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -14,9 +12,6 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const caretakers = usersByRole("CARETAKER");
-  const cleaners = usersByRole("CLEANER");
-
   return (
     <div className="min-h-screen">
       <header className="px-6 py-6 flex items-center justify-between max-w-6xl mx-auto">
@@ -32,18 +27,18 @@ function Index() {
 
       <main className="max-w-6xl mx-auto px-6 pb-24">
         <section className="py-10 sm:py-16 text-center">
-          <span className="chip mx-auto"><ShieldCheck className="size-3" /> Field-ops console v1</span>
+          <span className="chip mx-auto"><Sparkles className="size-3" /> Portal access by direct link</span>
           <h1 className="mt-5 text-4xl sm:text-6xl font-black tracking-tight">
-            Catch issues fast.<br />
-            <span className="text-primary">Fix them faster.</span>
+            Property maintenance<br />
+            <span className="text-primary">with separate portals.</span>
           </h1>
           <p className="mt-4 max-w-xl mx-auto text-muted-foreground">
-            One workflow for caretakers, cleaners and the master admin —
-            with offline-first task capture across Falcon, Martlett, Merlin, Oak and Northwood.
+            Each team receives its own access link. Caretaker, Cleaner, Resident report
+            and Admin now open in separate portals without password friction.
           </p>
         </section>
 
-        <section className="grid gap-5 md:grid-cols-3">
+        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           <Link
             to="/admin/login"
             className="surface-card group relative overflow-hidden p-6 transition hover:border-primary/50 hover:bg-surface-2 focus-ring"
@@ -62,35 +57,56 @@ function Index() {
               <li>· Kanban + table + filters</li>
             </ul>
             <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-              Sign in <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+              Open admin <ArrowRight className="size-4 transition group-hover:translate-x-1" />
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">demo: <span className="font-mono">admin / admin</span></p>
           </Link>
 
           <Link
-            to="/staff"
+            to="/caretaker"
             className="surface-card group relative overflow-hidden p-6 transition hover:border-primary/50 hover:bg-surface-2 focus-ring"
           >
             <div className="flex items-center gap-3">
               <div className="size-12 grid place-items-center rounded-lg bg-accent/15 text-accent-foreground"><Wrench className="size-6" /></div>
               <div>
-                <h2 className="text-lg font-bold">Field staff portal</h2>
-                <p className="text-xs text-muted-foreground">Caretakers & cleaners — no login required</p>
+                <h2 className="text-lg font-bold">Caretaker portal</h2>
+                <p className="text-xs text-muted-foreground">Direct access to caretaker dashboard and task creation</p>
               </div>
             </div>
-            <div className="mt-5 flex -space-x-2">
-              {[...caretakers, ...cleaners].slice(0, 6).map((u) => (
-                <Avatar key={u.id} userId={u.id} size={32} className="ring-2 ring-card" />
-              ))}
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">{caretakers.length} caretakers · {cleaners.length} cleaners</p>
+            <ul className="mt-5 text-sm text-muted-foreground space-y-1">
+              <li>· See own tasks and created tasks</li>
+              <li>· Create tasks from the field</li>
+              <li>· Offline-first sync support</li>
+            </ul>
             <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-              Pick your profile <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+              Open caretaker portal <ArrowRight className="size-4 transition group-hover:translate-x-1" />
             </div>
           </Link>
 
           <Link
-            to="/report/new"
+            to="/cleaner"
+            className="surface-card group relative overflow-hidden p-6 transition hover:border-primary/50 hover:bg-surface-2 focus-ring"
+          >
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />
+            <div className="flex items-center gap-3">
+              <div className="size-12 grid place-items-center rounded-lg bg-success/15 text-success"><Wrench className="size-6" /></div>
+              <div>
+                <h2 className="text-lg font-bold">Cleaner portal</h2>
+                <p className="text-xs text-muted-foreground">Direct access only to tasks assigned to the cleaner</p>
+              </div>
+            </div>
+            <ul className="mt-5 text-sm text-muted-foreground space-y-1">
+              <li>· See only assigned tasks</li>
+              <li>· Update task progress and review flow</li>
+              <li>· No task creation in this portal</li>
+            </ul>
+            <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+              Open cleaner portal <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+            </div>
+          </Link>
+
+          <Link
+            to="/report"
             className="surface-card group relative overflow-hidden p-6 transition hover:border-primary/50 hover:bg-surface-2 focus-ring"
           >
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-accent/25 to-transparent pointer-events-none" />
@@ -107,15 +123,15 @@ function Index() {
               <li>· Admin triages and assigns later</li>
             </ul>
             <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-              Create report <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+              Open resident report <ArrowRight className="size-4 transition group-hover:translate-x-1" />
             </div>
           </Link>
         </section>
 
         <section className="mt-12 grid gap-4 sm:grid-cols-3 text-sm">
-          <Feature title="Offline-first" body="Capture tasks anywhere in the building. They sync automatically when you're back online." />
-          <Feature title="Role-aware" body="Caretakers and cleaners only see their own tasks. Admin sees everything." />
-          <Feature title="Audit trail" body="Every status change, comment and reassignment is logged on the task." />
+          <Feature title="Separate entry points" body="Each profile receives its own direct portal link, reducing navigation mistakes." />
+          <Feature title="Role-aware" body="Caretaker can create tasks, Cleaner sees only assigned tasks, Resident opens reports, Admin sees everything." />
+          <Feature title="Offline-first" body="Tasks continue to work locally and can be synchronized when connectivity returns." />
         </section>
 
         <footer className="mt-16 text-center text-xs text-muted-foreground inline-flex items-center justify-center gap-2 w-full">

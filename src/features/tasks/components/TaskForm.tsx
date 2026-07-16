@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Camera, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { BLOCKS } from "@/features/blocks/data";
-import type { Task } from "@/features/tasks/types";
+import type { ResidentRequestType, Task } from "@/features/tasks/types";
 import { useTasksStore } from "@/features/tasks/store";
 import { useSyncStore } from "@/features/sync/store";
 import { triggerManualSync } from "@/features/sync/runtime";
@@ -59,15 +59,20 @@ export function TaskForm({
   const [blockId, setBlockId] = useState("");
   const [flatId, setFlatId] = useState("");
   const [desc, setDesc] = useState("");
+  const [residentRequestType, setResidentRequestType] = useState<ResidentRequestType>("ISSUE");
+  const [garbageBagQuantity, setGarbageBagQuantity] = useState("1");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const block = BLOCKS.find((b) => b.id === blockId);
   const flats = block?.flats ?? [];
+  const isGarbageBagRequest = isResidentPortal && residentRequestType === "GARBAGE_BAG";
+  const normalizedQuantity = Number.parseInt(garbageBagQuantity, 10);
+  const hasValidGarbageBagQuantity = Number.isInteger(normalizedQuantity) && normalizedQuantity > 0;
   const canSubmit = !!(
     blockId &&
     flatId &&
-    desc.trim() &&
-    (!isResidentPortal || reporterName.trim())
+    (!isResidentPortal || reporterName.trim()) &&
+    (isGarbageBagRequest ? hasValidGarbageBagQuantity : desc.trim())
   );
 
   async function onPhoto(file: File | null) {
@@ -100,17 +105,24 @@ export function TaskForm({
       message: `[DEBUG] Submit started mode=${mode} online=${online} hasPhoto=${Boolean(photo)} configured=${isSupabaseConfigured}`,
     });
     // #endregion
-    const generatedTitle = buildTaskTitle(desc.trim(), blockId, flatId);
+    const normalizedDescription = isGarbageBagRequest
+      ? buildGarbageBagDescription(normalizedQuantity, desc.trim())
+      : desc.trim();
+    const generatedTitle = isGarbageBagRequest
+      ? buildGarbageBagTitle(blockId, flatId, normalizedQuantity)
+      : buildTaskTitle(normalizedDescription, blockId, flatId);
     const t = create(
       {
         title: generatedTitle,
-        description: desc.trim(),
+        description: normalizedDescription,
         photo: photo ?? undefined,
         blockId,
         flatId,
         createdById: creatorId,
         reporterType: isResidentPortal ? "RESIDENT" : "USER",
         reporterName: isResidentPortal ? reporterName.trim() : undefined,
+        residentRequestType: isResidentPortal ? residentRequestType : undefined,
+        garbageBagQuantity: isGarbageBagRequest ? normalizedQuantity : undefined,
       },
       creatorId,
     );
@@ -177,6 +189,31 @@ export function TaskForm({
         </Section>
       )}
 
+      {isResidentPortal && (
+        <Section title="Request type" required hint="Choose a standard issue report or a garbage bag request.">
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { value: "ISSUE", label: "Issue report", description: "General maintenance or complaint." },
+              { value: "GARBAGE_BAG", label: "Garbage bag", description: "Request bags with a fixed quantity." },
+            ] as const).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setResidentRequestType(option.value)}
+                className={`rounded-lg border px-4 py-3 text-left focus-ring ${
+                  residentRequestType === option.value
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border bg-surface-2 hover:border-primary/40"
+                }`}
+              >
+                <div className="text-sm font-semibold">{option.label}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{option.description}</div>
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
+
       <Section title="Photo" hint="Optional, but helpful for triage.">
         {photo ? (
           <div className="relative">
@@ -207,6 +244,20 @@ export function TaskForm({
         )}
       </Section>
 
+      {isGarbageBagRequest && (
+        <Section title="Quantity" required hint="Enter how many garbage bags the resident is requesting.">
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            step={1}
+            value={garbageBagQuantity}
+            onChange={(e) => setGarbageBagQuantity(e.target.value)}
+            className="w-full bg-surface-2 border border-border rounded-md px-3 py-2.5 text-sm focus-ring"
+          />
+        </Section>
+      )}
+
       <Section title="Location" required>
         <div className="grid grid-cols-2 gap-2">
           <select
@@ -229,13 +280,25 @@ export function TaskForm({
         </div>
       </Section>
 
-      <Section title="Description" required>
+      <Section
+        title={isGarbageBagRequest ? "Notes" : "Description"}
+        required={!isGarbageBagRequest}
+        hint={
+          isGarbageBagRequest
+            ? "Optional note for the admin team."
+            : "Describe the issue and where it is happening."
+        }
+      >
         <textarea
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
           rows={4}
           maxLength={500}
-          placeholder="Describe the issue and where it is happening."
+          placeholder={
+            isGarbageBagRequest
+              ? "Optional: add delivery notes or any extra detail."
+              : "Describe the issue and where it is happening."
+          }
           className="w-full bg-surface-2 border border-border rounded-md px-3 py-2.5 text-sm focus-ring resize-none"
         />
       </Section>
@@ -283,6 +346,20 @@ function buildTaskTitle(description: string, blockId: string, flatId: string) {
   const location = [block?.name, flat?.label ? `Flat ${flat.label}` : null].filter(Boolean).join(" · ");
 
   return location ? `${location} · ${preview}` : preview;
+}
+
+function buildGarbageBagTitle(blockId: string, flatId: string, quantity: number) {
+  const block = BLOCKS.find((item) => item.id === blockId);
+  const flat = block?.flats.find((item) => item.id === flatId);
+  const location = [block?.name, flat?.label ? `Flat ${flat.label}` : null].filter(Boolean).join(" · ");
+  const label = `Garbage bag request x${quantity}`;
+
+  return location ? `${location} · ${label}` : label;
+}
+
+function buildGarbageBagDescription(quantity: number, notes: string) {
+  const summary = `Resident requested ${quantity} garbage bag${quantity > 1 ? "s" : ""}.`;
+  return notes ? `${summary}\n\nNotes: ${notes}` : summary;
 }
 
 function Section({ title, required, hint, children }: { title: string; required?: boolean; hint?: string; children: React.ReactNode }) {

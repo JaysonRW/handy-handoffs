@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Camera, CheckCircle2, MessageSquarePlus, RotateCcw, Send } from "lucide-react";
+import { ArrowLeft, Camera, CheckCircle2, MessageSquarePlus, RotateCcw, Save } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 import type { Task, Priority, Role } from "@/features/tasks/types";
 import { PriorityBadge } from "./PriorityBadge";
 import { StatusBadge } from "./StatusBadge";
@@ -23,6 +24,8 @@ export function TaskDetail({
   backHref: string;
   isAdmin: boolean;
 }) {
+  type DraftAction = "reopen" | "acceptCompletion" | null;
+
   const setPriority = useTasksStore((s) => s.setPriority);
   const assign = useTasksStore((s) => s.assign);
   const setStatus = useTasksStore((s) => s.setStatus);
@@ -44,11 +47,97 @@ export function TaskDetail({
     ? task.reporterName ?? "Resident"
     : creator?.name ?? "Unknown";
 
-  const [text, setText] = useState("");
+  const [draftPriority, setDraftPriority] = useState(task.priority);
+  const [draftAssigneeId, setDraftAssigneeId] = useState(task.assigneeId ?? "");
+  const [draftStatus, setDraftStatus] = useState(task.status);
+  const [draftAction, setDraftAction] = useState<DraftAction>(null);
+  const [draftComment, setDraftComment] = useState("");
+  const [pendingPhotos, setPendingPhotos] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
   const isAssignedToActor = task.assigneeId === actorId;
   const isCreatedByActor = task.createdById === actorId;
   const canEdit = isAdmin || (canCommentOnTasks(actorRole) && (isAssignedToActor || isCreatedByActor));
   const canTransition = isAdmin || (canCompleteAssignedTasks(actorRole) && isAssignedToActor);
+  const visiblePhotos = useMemo(
+    () => [task.photo, ...(task.extraPhotos ?? []), ...pendingPhotos].filter(Boolean) as string[],
+    [pendingPhotos, task.extraPhotos, task.photo],
+  );
+  const hasChanges =
+    draftPriority !== task.priority ||
+    draftAssigneeId !== (task.assigneeId ?? "") ||
+    draftStatus !== task.status ||
+    draftAction !== null ||
+    draftComment.trim().length > 0 ||
+    pendingPhotos.length > 0;
+  const canSave = hasChanges && (isAdmin || canEdit || canTransition);
+
+  useEffect(() => {
+    if (hasChanges || saving) return;
+    setDraftPriority(task.priority);
+    setDraftAssigneeId(task.assigneeId ?? "");
+    setDraftStatus(task.status);
+    setDraftAction(null);
+    setDraftComment("");
+    setPendingPhotos([]);
+  }, [hasChanges, saving, task]);
+
+  async function fileToDataUrl(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handlePhotoDraft(file: File | null) {
+    if (!file) return;
+    const dataUrl = await fileToDataUrl(file);
+    setPendingPhotos((current) => [...current, dataUrl]);
+  }
+
+  function handleSave() {
+    if (!canSave || saving) return;
+    setSaving(true);
+
+    const commentToSave = draftComment.trim();
+    const photosToSave = [...pendingPhotos];
+    const nextPriority = draftPriority;
+    const nextAssigneeId = draftAssigneeId;
+    const nextStatus = draftStatus;
+    const nextAction = draftAction;
+
+    setDraftComment("");
+    setPendingPhotos([]);
+    setDraftAction(null);
+
+    if (nextPriority !== task.priority) {
+      setPriority(task.id, nextPriority, actorId);
+    }
+
+    if (nextAssigneeId !== (task.assigneeId ?? "")) {
+      assign(task.id, nextAssigneeId || null, actorId);
+    }
+
+    if (nextAction === "reopen") {
+      reopen(task.id, actorId);
+    } else if (nextAction === "acceptCompletion") {
+      acceptCompletion(task.id, actorId);
+    } else if (nextStatus !== task.status) {
+      setStatus(task.id, nextStatus, actorId);
+    }
+
+    if (commentToSave) {
+      addComment(task.id, commentToSave, actorId);
+    }
+
+    for (const photo of photosToSave) {
+      addPhoto(task.id, photo, actorId);
+    }
+
+    setSaving(false);
+    toast.success("Alteracoes salvas localmente. Use Sync now para enviar ao Supabase.");
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
@@ -64,10 +153,17 @@ export function TaskDetail({
             <span className="chip">{block?.name} · Flat {flat?.label}</span>
             {task.problemCategory && <span className="chip">{task.problemCategory}</span>}
             {task.complaintCategory && <span className="chip">{task.complaintCategory}</span>}
+            {task.residentRequestType === "GARBAGE_BAG" && <span className="chip">Garbage bag</span>}
             {!task.synced && <span className="chip border-accent/40 bg-accent/15 text-accent-foreground">Pending sync</span>}
           </div>
           <h2 className="mt-3 text-2xl font-bold tracking-tight">{task.title}</h2>
           <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>
+          {task.residentRequestType === "GARBAGE_BAG" && typeof task.garbageBagQuantity === "number" && (
+            <div className="mt-4 inline-flex items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Requested quantity</span>
+              <span className="font-semibold text-foreground">{task.garbageBagQuantity}</span>
+            </div>
+          )}
           <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
             <Avatar userId={task.createdById} size={24} />
             <span>
@@ -78,11 +174,15 @@ export function TaskDetail({
             </span>
           </div>
 
-          {(task.photo || (task.extraPhotos?.length ?? 0) > 0) && (
+          {visiblePhotos.length > 0 && (
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {task.photo && <img src={task.photo} className="rounded-md border border-border aspect-square object-cover" alt="" />}
-              {task.extraPhotos?.map((p, i) => (
-                <img key={i} src={p} className="rounded-md border border-border aspect-square object-cover" alt="" />
+              {visiblePhotos.map((photo, index) => (
+                <img
+                  key={`${photo.slice(0, 24)}-${index}`}
+                  src={photo}
+                  className="rounded-md border border-border aspect-square object-cover"
+                  alt=""
+                />
               ))}
             </div>
           )}
@@ -98,8 +198,8 @@ export function TaskDetail({
                   {(["P1", "P2", "P3"] as Exclude<Priority, null>[]).map((p) => (
                     <button
                       key={p}
-                      onClick={() => setPriority(task.id, p, actorId)}
-                      className={`rounded-md px-2 py-2 text-xs font-semibold border focus-ring ${task.priority === p ? "bg-primary text-primary-foreground border-primary" : "bg-surface-2 border-border hover:border-primary/50"}`}
+                      onClick={() => setDraftPriority(p)}
+                      className={`rounded-md px-2 py-2 text-xs font-semibold border focus-ring ${draftPriority === p ? "bg-primary text-primary-foreground border-primary" : "bg-surface-2 border-border hover:border-primary/50"}`}
                     >{p}</button>
                   ))}
                 </div>
@@ -107,8 +207,8 @@ export function TaskDetail({
               <div>
                 <label className="text-xs text-muted-foreground">Assignee</label>
                 <select
-                  value={task.assigneeId ?? ""}
-                  onChange={(e) => assign(task.id, e.target.value || null, actorId)}
+                  value={draftAssigneeId}
+                  onChange={(e) => setDraftAssigneeId(e.target.value)}
                   className="mt-1 w-full bg-surface-2 border border-border rounded-md px-3 py-2 text-sm focus-ring"
                 >
                   <option value="">Unassigned</option>
@@ -122,16 +222,16 @@ export function TaskDetail({
               </div>
               {task.status === "DONE" && (
                 <button
-                  onClick={() => reopen(task.id, actorId)}
-                  className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-surface-2 hover:bg-surface px-3 py-2 text-sm focus-ring"
+                  onClick={() => setDraftAction((current) => current === "reopen" ? null : "reopen")}
+                  className={`inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm focus-ring ${draftAction === "reopen" ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface-2 hover:bg-surface"}`}
                 >
                   <RotateCcw className="size-4" /> Reopen task
                 </button>
               )}
               {task.status === "DONE" && (
                 <button
-                  onClick={() => acceptCompletion(task.id, actorId)}
-                  className="inline-flex items-center justify-center gap-2 rounded-md bg-success/15 text-success border border-success/40 hover:bg-success/25 px-3 py-2 text-sm font-semibold focus-ring"
+                  onClick={() => setDraftAction((current) => current === "acceptCompletion" ? null : "acceptCompletion")}
+                  className={`inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold focus-ring ${draftAction === "acceptCompletion" ? "bg-success/25 text-success border-success/60" : "bg-success/15 text-success border-success/40 hover:bg-success/25"}`}
                 >
                   <CheckCircle2 className="size-4" /> Accept completion
                 </button>
@@ -152,13 +252,13 @@ export function TaskDetail({
               <span className="text-xs text-muted-foreground">Update status</span>
               <div className="grid grid-cols-2 gap-1">
                 <button
-                  onClick={() => setStatus(task.id, "DOING", actorId)}
-                  disabled={task.status === "DOING"}
+                  onClick={() => setDraftStatus("DOING")}
+                  disabled={draftStatus === "DOING"}
                   className="rounded-md border border-border bg-surface-2 hover:bg-surface px-2 py-2 text-xs font-semibold focus-ring disabled:opacity-40"
                 >Doing</button>
                 <button
-                  onClick={() => setStatus(task.id, "DONE", actorId)}
-                  disabled={task.status === "DONE"}
+                  onClick={() => setDraftStatus("DONE")}
+                  disabled={draftStatus === "DONE"}
                   className="rounded-md border border-success/40 bg-success/15 text-success hover:bg-success/25 px-2 py-2 text-xs font-semibold focus-ring disabled:opacity-40"
                 >Done</button>
               </div>
@@ -166,18 +266,32 @@ export function TaskDetail({
           )}
           {canTransition && canStartAssignedTasks(actorRole) && task.status === "NEW" && task.assigneeId === actorId && (
             <button
-              onClick={() => setStatus(task.id, "DOING", actorId)}
+              onClick={() => setDraftStatus("DOING")}
               className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-semibold focus-ring hover:bg-primary/90"
             >Start work</button>
           )}
           {canTransition && actorRole === "CLEANER" && task.status !== "DONE" && (
             <button
-              onClick={() => setStatus(task.id, "DONE", actorId)}
+              onClick={() => setDraftStatus("DONE")}
               className="rounded-md border border-success/40 bg-success/15 text-success hover:bg-success/25 px-3 py-2 text-sm font-semibold focus-ring"
             >
               Mark done
             </button>
           )}
+          <div className="pt-2 border-t border-border flex flex-col gap-2">
+            <button
+              onClick={handleSave}
+              disabled={!canSave || saving}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground focus-ring hover:bg-primary/90 disabled:opacity-40"
+            >
+              <Save className="size-4" /> Save
+            </button>
+            {hasChanges && (
+              <p className="text-xs text-muted-foreground">
+                Changes stay local until you use <span className="font-semibold text-foreground">Sync now</span>.
+              </p>
+            )}
+          </div>
         </aside>
       </header>
 
@@ -192,30 +306,24 @@ export function TaskDetail({
                 onChange={async (e) => {
                   const f = e.target.files?.[0];
                   if (!f) return;
-                  const r = new FileReader();
-                  r.onload = () => addPhoto(task.id, r.result as string, actorId);
-                  r.readAsDataURL(f);
+                  await handlePhotoDraft(f);
                   e.currentTarget.value = "";
                 }}
               />
             </label>
           </div>
           {canEdit && (
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2">
               <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
+                value={draftComment}
+                onChange={(e) => setDraftComment(e.target.value)}
                 rows={2}
                 placeholder="Add an update for the team…"
                 className="flex-1 bg-surface-2 border border-border rounded-md px-3 py-2 text-sm focus-ring resize-none"
               />
-              <button
-                onClick={() => { if (text.trim()) { addComment(task.id, text.trim(), actorId); setText(""); } }}
-                disabled={!text.trim()}
-                className="self-end rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-semibold disabled:opacity-40 focus-ring hover:bg-primary/90 inline-flex items-center gap-1.5"
-              >
-                <Send className="size-3.5" /> Send
-              </button>
+              <p className="text-xs text-muted-foreground">
+                Comments and photos are saved locally with <span className="font-semibold text-foreground">Save</span>.
+              </p>
             </div>
           )}
           {comments.length === 0 ? (

@@ -10,6 +10,8 @@ export interface User {
 }
 
 export const RESIDENT_PORTAL_USER_ID = "u_resident_portal";
+export const CARETAKER_PORTAL_USER_ID = "u_care_1";
+export const CLEANER_PORTAL_USER_ID = "u_clean_1";
 
 export const USERS: User[] = [
   { id: "u_admin", name: "Helena Pires", role: "MASTER_ADMIN", initials: "HP", hue: 256 },
@@ -20,6 +22,12 @@ export const USERS: User[] = [
 
 export const getUser = (id: string | null | undefined) =>
   USERS.find((u) => u.id === id);
+
+export function getPortalPathForUser(userId: string) {
+  if (userId === CARETAKER_PORTAL_USER_ID) return "/caretaker";
+  if (userId === CLEANER_PORTAL_USER_ID) return "/cleaner";
+  return `/staff/${userId}`;
+}
 
 export const usersByRole = (role: Role) => USERS.filter((u) => u.role === role);
 export const visibleUsers = () => USERS.filter((u) => !u.hidden);

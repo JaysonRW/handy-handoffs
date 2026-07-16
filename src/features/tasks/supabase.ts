@@ -5,6 +5,7 @@ import {
   supabaseEnvStatus,
 } from "@/lib/supabase/client";
 import { useSyncStore } from "@/features/sync/store";
+import { nanoid } from "@/lib/id";
 import type { ActivityEntry, Comment, Task } from "./types";
 
 type TaskRow = {
@@ -21,6 +22,8 @@ type TaskRow = {
   created_by_id: string;
   reporter_type: Task["reporterType"] | null;
   reporter_name: string | null;
+  resident_request_type?: Task["residentRequestType"] | null;
+  garbage_bag_quantity?: number | null;
   assignee_id: string | null;
   synced_at: string | null;
   created_at: string;
@@ -45,11 +48,37 @@ type ActivityRow = {
   created_at: string;
 };
 
+type AttachmentRow = {
+  id: string;
+  task_id: string;
+  uploaded_by_id: string;
+  storage_path: string;
+  file_name: string | null;
+  mime_type: string | null;
+  kind: "PRIMARY" | "EXTRA";
+  created_at: string;
+};
+
 export type TaskSnapshot = {
   tasks: Task[];
   comments: Comment[];
   activity: ActivityEntry[];
 };
+
+const TASKS_BASE_SELECT =
+  "id,title,description,photo_path,block_id,flat_id,problem_category,complaint_category,status,priority,created_by_id,reporter_type,reporter_name,assignee_id,synced_at,created_at,updated_at";
+const TASKS_EXTENDED_SELECT = `${TASKS_BASE_SELECT},resident_request_type,garbage_bag_quantity`;
+
+function isMissingResidentRequestColumnsError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("resident_request_type") ||
+    message.includes("garbage_bag_quantity") ||
+    message.includes("Could not find the") ||
+    message.includes("column") ||
+    message.includes("schema cache")
+  );
+}
 
 function mapTask(row: TaskRow): Task {
   const supabase = getSupabaseBrowserClient();
@@ -72,6 +101,8 @@ function mapTask(row: TaskRow): Task {
     createdById: row.created_by_id,
     reporterType: row.reporter_type ?? undefined,
     reporterName: row.reporter_name ?? undefined,
+    residentRequestType: row.resident_request_type ?? undefined,
+    garbageBagQuantity: row.garbage_bag_quantity ?? undefined,
     assigneeId: row.assignee_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -80,8 +111,31 @@ function mapTask(row: TaskRow): Task {
   };
 }
 
+function getPublicStorageUrl(storagePath: string) {
+  return getSupabaseBrowserClient()
+    .storage
+    .from(SUPABASE_STORAGE_BUCKET)
+    .getPublicUrl(storagePath).data.publicUrl;
+}
+
+function mergeSnapshotAttachments(tasks: Task[], attachments: AttachmentRow[]) {
+  const attachmentsByTask = new Map<string, string[]>();
+
+  for (const attachment of attachments) {
+    if (attachment.kind !== "EXTRA") continue;
+    const current = attachmentsByTask.get(attachment.task_id) ?? [];
+    current.push(getPublicStorageUrl(attachment.storage_path));
+    attachmentsByTask.set(attachment.task_id, current);
+  }
+
+  return tasks.map((task) => ({
+    ...task,
+    extraPhotos: attachmentsByTask.get(task.id) ?? [],
+  }));
+}
+
 function taskToRow(task: Task, photoPath: string | null): TaskRow {
-  return {
+  const row: TaskRow = {
     id: task.id,
     title: task.title,
     description: task.description,
@@ -100,6 +154,42 @@ function taskToRow(task: Task, photoPath: string | null): TaskRow {
     created_at: task.createdAt,
     updated_at: task.updatedAt,
   };
+
+  if (task.residentRequestType) {
+    row.resident_request_type = task.residentRequestType;
+  }
+
+  if (typeof task.garbageBagQuantity === "number") {
+    row.garbage_bag_quantity = task.garbageBagQuantity;
+  }
+
+  return row;
+}
+
+async function fetchTasksResult(supabase: ReturnType<typeof getSupabaseBrowserClient>) {
+  const extendedResult = await supabase
+    .from("tasks")
+    .select(TASKS_EXTENDED_SELECT)
+    .order("created_at", { ascending: false });
+
+  if (!extendedResult.error) {
+    return extendedResult;
+  }
+
+  if (!isMissingResidentRequestColumnsError(extendedResult.error)) {
+    return extendedResult;
+  }
+
+  useSyncStore.getState().pushDebugEvent({
+    scope: "supabase",
+    status: "warning",
+    message: "[DEBUG] tasks table still missing resident request columns; using fallback snapshot query",
+  });
+
+  return supabase
+    .from("tasks")
+    .select(TASKS_BASE_SELECT)
+    .order("created_at", { ascending: false });
 }
 
 function commentToRow(comment: Comment): CommentRow {
@@ -177,6 +267,46 @@ async function uploadTaskPhoto(task: Task): Promise<string | null> {
   return filePath;
 }
 
+async function uploadExtraPhotos(task: Task): Promise<AttachmentRow[]> {
+  const draftPhotos = (task.extraPhotos ?? []).filter((photo) => photo.startsWith("data:"));
+  if (draftPhotos.length === 0) return [];
+
+  const supabase = getSupabaseBrowserClient();
+  const uploaded: AttachmentRow[] = [];
+
+  for (let index = 0; index < draftPhotos.length; index += 1) {
+    const photo = draftPhotos[index]!;
+    const extension = getFileExtensionFromDataUrl(photo);
+    const filePath = `tasks/${task.id}/extra-${task.updatedAt.replace(/[:.]/g, "-")}-${index}.${extension}`;
+    const blob = dataUrlToBlob(photo);
+
+    const uploadResult = await supabase.storage
+      .from(SUPABASE_STORAGE_BUCKET)
+      .upload(filePath, blob, {
+        cacheControl: "3600",
+        contentType: blob.type,
+        upsert: true,
+      });
+
+    if (uploadResult.error) {
+      throw uploadResult.error;
+    }
+
+    uploaded.push({
+      id: nanoid(),
+      task_id: task.id,
+      uploaded_by_id: task.createdById,
+      storage_path: filePath,
+      file_name: `extra-${index + 1}.${extension}`,
+      mime_type: blob.type,
+      kind: "EXTRA",
+      created_at: new Date().toISOString(),
+    });
+  }
+
+  return uploaded;
+}
+
 export async function upsertTaskBundleToSupabase(input: {
   task: Task;
   comments: Comment[];
@@ -188,6 +318,7 @@ export async function upsertTaskBundleToSupabase(input: {
 
   const supabase = getSupabaseBrowserClient();
   const photoPath = await uploadTaskPhoto(input.task);
+  const extraAttachments = await uploadExtraPhotos(input.task);
   const taskRow = taskToRow(
     {
       ...input.task,
@@ -199,6 +330,14 @@ export async function upsertTaskBundleToSupabase(input: {
 
   const taskResult = await supabase.from("tasks").upsert(taskRow).select("id").single();
   if (taskResult.error) {
+    if (
+      input.task.residentRequestType === "GARBAGE_BAG" &&
+      isMissingResidentRequestColumnsError(taskResult.error)
+    ) {
+      throw new Error(
+        "O banco Supabase ainda nao possui as colunas resident_request_type e garbage_bag_quantity. Aplique a migration antes de sincronizar pedidos de Garbage bag.",
+      );
+    }
     throw taskResult.error;
   }
 
@@ -217,6 +356,15 @@ export async function upsertTaskBundleToSupabase(input: {
       .upsert(input.activity.map(activityToRow));
     if (activityResult.error) {
       throw activityResult.error;
+    }
+  }
+
+  if (extraAttachments.length > 0) {
+    const attachmentsResult = await supabase
+      .from("task_attachments")
+      .upsert(extraAttachments);
+    if (attachmentsResult.error) {
+      throw attachmentsResult.error;
     }
   }
 
@@ -287,13 +435,8 @@ export async function fetchTaskSnapshotFromSupabase(): Promise<TaskSnapshot | nu
 
   const supabase = getSupabaseBrowserClient();
   try {
-    const [tasksResult, commentsResult, activityResult] = await Promise.all([
-      supabase
-        .from("tasks")
-        .select(
-          "id,title,description,photo_path,block_id,flat_id,problem_category,complaint_category,status,priority,created_by_id,reporter_type,reporter_name,assignee_id,synced_at,created_at,updated_at",
-        )
-        .order("created_at", { ascending: false }),
+    const [tasksResult, commentsResult, activityResult, attachmentsResult] = await Promise.all([
+      fetchTasksResult(supabase),
       supabase
         .from("task_comments")
         .select("id,task_id,author_id,text,created_at")
@@ -302,15 +445,21 @@ export async function fetchTaskSnapshotFromSupabase(): Promise<TaskSnapshot | nu
         .from("task_activity")
         .select("id,task_id,actor_id,type,message,meta,created_at")
         .order("created_at", { ascending: false }),
+      supabase
+        .from("task_attachments")
+        .select("id,task_id,uploaded_by_id,storage_path,file_name,mime_type,kind,created_at")
+        .order("created_at", { ascending: true }),
     ]);
 
     if (tasksResult.error) throw tasksResult.error;
     if (commentsResult.error) throw commentsResult.error;
     if (activityResult.error) throw activityResult.error;
+    if (attachmentsResult.error) throw attachmentsResult.error;
 
     const tasks = (tasksResult.data ?? []) as TaskRow[];
     const comments = (commentsResult.data ?? []) as CommentRow[];
     const activity = (activityResult.data ?? []) as ActivityRow[];
+    const attachments = (attachmentsResult.data ?? []) as AttachmentRow[];
 
     // #region debug-point C:snapshot-result
     useSyncStore.getState().patchDebug({
@@ -338,7 +487,7 @@ export async function fetchTaskSnapshotFromSupabase(): Promise<TaskSnapshot | nu
     }
 
     return {
-      tasks: tasks.map(mapTask),
+      tasks: mergeSnapshotAttachments(tasks.map(mapTask), attachments),
       comments: comments.map(mapComment),
       activity: activity.map(mapActivity),
     };

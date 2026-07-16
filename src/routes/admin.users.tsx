@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminShell } from "@/components/layout/AdminShell";
-import { visibleUsers } from "@/features/users/data";
+import { getPortalPathForUser, visibleUsers } from "@/features/users/data";
 import { Avatar } from "@/features/users/Avatar";
 import { useTasksStore } from "@/features/tasks/store";
 
@@ -18,7 +18,7 @@ function TeamPage() {
         {users.map((u) => {
           const open = tasks.filter((t) => t.assigneeId === u.id && t.status !== "DONE").length;
           const created = tasks.filter((t) => t.createdById === u.id).length;
-          const portal = u.role === "MASTER_ADMIN" ? "/admin" : `/staff/${u.id}`;
+          const portal = u.role === "MASTER_ADMIN" ? "/admin" : getPortalPathForUser(u.id);
           return (
             <article key={u.id} className="surface-card p-4 flex items-center gap-4">
               <Avatar userId={u.id} size={48} />

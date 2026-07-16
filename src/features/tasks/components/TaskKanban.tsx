@@ -4,15 +4,37 @@ import { useTasksStore } from "@/features/tasks/store";
 import { cn } from "@/lib/utils";
 import { TaskCard } from "./TaskCard";
 import { TaskSyncNowButton } from "@/features/sync/SyncIndicator";
+import { getUser } from "@/features/users/data";
+
+export function getAdminAssigneeBucket(task: Task) {
+  const assigneeRole = getUser(task.assigneeId)?.role;
+
+  if (assigneeRole === "CARETAKER") return "caretaker";
+  if (assigneeRole === "CLEANER") return "cleaner";
+  return "new";
+}
+
+export function countTasksOlderThanSevenDays(tasks: Task[], now = Date.now()) {
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+  return tasks.filter((task) => {
+    if (task.status === "DONE") return false;
+    const createdAtMs = new Date(task.createdAt).getTime();
+    if (Number.isNaN(createdAtMs)) return false;
+    return now - createdAtMs > sevenDaysMs;
+  }).length;
+}
 
 export function TaskKanban({
   tasks,
   buildHref,
   actorId,
+  layout = "status",
 }: {
   tasks: Task[];
   buildHref: (t: Task) => string;
   actorId?: string;
+  layout?: "status" | "admin_assignee_role";
 }) {
   const setPriority = useTasksStore((s) => s.setPriority);
   const addComment = useTasksStore((s) => s.addComment);
@@ -22,11 +44,54 @@ export function TaskKanban({
     text: "",
   });
 
-  const cols = [
-    { key: "NEW", title: "New · Awaiting triage", tone: "border-primary/40" },
-    { key: "DOING", title: "Doing · In progress", tone: "border-accent/40" },
-    { key: "DONE", title: "Done · Awaiting review", tone: "border-success/40" },
-  ] as const;
+  const cols =
+    layout === "admin_assignee_role"
+      ? [
+          {
+            key: "new",
+            title: "New · Awaiting triage",
+            tone: "border-primary/40",
+            emptyText: "No new tasks here.",
+            list: tasks.filter((task) => getAdminAssigneeBucket(task) === "new"),
+          },
+          {
+            key: "caretaker",
+            title: "Caretaker · Assigned tasks",
+            tone: "border-accent/40",
+            emptyText: "No tasks assigned to Caretaker.",
+            list: tasks.filter((task) => getAdminAssigneeBucket(task) === "caretaker"),
+          },
+          {
+            key: "cleaner",
+            title: "Cleaner · Assigned tasks",
+            tone: "border-success/40",
+            emptyText: "No tasks assigned to Cleaner.",
+            list: tasks.filter((task) => getAdminAssigneeBucket(task) === "cleaner"),
+          },
+        ]
+      : [
+          {
+            key: "NEW",
+            title: "New · Awaiting triage",
+            tone: "border-primary/40",
+            emptyText: "No tasks here.",
+            list: tasks.filter((task) => task.status === "NEW"),
+          },
+          {
+            key: "DOING",
+            title: "Doing · In progress",
+            tone: "border-accent/40",
+            emptyText: "No tasks here.",
+            list: tasks.filter((task) => task.status === "DOING"),
+          },
+          {
+            key: "DONE",
+            title: "Done · Awaiting review",
+            tone: "border-success/40",
+            emptyText: "No tasks here.",
+            list: tasks.filter((task) => task.status === "DONE"),
+          },
+        ];
 
   const priorities = ["P1", "P2", "P3"] as Exclude<Priority, null>[];
   const canQuick = !!actorId;
@@ -34,16 +99,20 @@ export function TaskKanban({
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {cols.map((c) => {
-        const list = tasks.filter((t) => t.status === c.key);
+        const list = c.list;
+        const agingCount = countTasksOlderThanSevenDays(list);
         return (
           <section key={c.key} className={`surface-card border-t-2 ${c.tone} p-3 flex flex-col gap-3 min-h-[300px]`}>
-            <header className="flex items-center justify-between px-1">
+            <header className="flex items-start justify-between gap-3 px-1">
               <h3 className="text-sm font-semibold">{c.title}</h3>
-              <span className="chip">{list.length}</span>
+              <div className="flex items-center gap-2">
+                <MetricChip label="Total" value={list.length} />
+                <MetricChip label="+7 days" value={agingCount} tone="warning" />
+              </div>
             </header>
             <div className="flex flex-col gap-2">
               {list.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-8 text-center">No tasks here.</p>
+                <p className="text-xs text-muted-foreground py-8 text-center">{c.emptyText}</p>
               ) : (
                 list.map((t) => {
                   const open = canQuick && quick.taskId === t.id;
@@ -152,6 +221,32 @@ export function TaskKanban({
           </section>
         );
       })}
+    </div>
+  );
+}
+
+function MetricChip({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "warning";
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-[58px] flex-col items-center rounded-full border px-2.5 py-1 text-center",
+        tone === "warning"
+          ? "border-warning/40 bg-warning/10 text-warning"
+          : "border-border bg-surface-2 text-foreground",
+      )}
+    >
+      <span className={cn("text-[10px] font-semibold uppercase tracking-wide", tone === "warning" ? "text-warning/90" : "text-muted-foreground")}>
+        {label}
+      </span>
+      <span className="text-sm font-semibold leading-tight">{value}</span>
     </div>
   );
 }

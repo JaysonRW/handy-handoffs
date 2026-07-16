@@ -42,6 +42,8 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     complaintCategory: overrides.complaintCategory,
     reporterType: overrides.reporterType,
     reporterName: overrides.reporterName,
+    residentRequestType: overrides.residentRequestType,
+    garbageBagQuantity: overrides.garbageBagQuantity,
   };
 }
 
@@ -92,6 +94,8 @@ describe("TaskDetail permissions", () => {
     expect(screen.queryByPlaceholderText("Add an update for the team…")).toBeNull();
     expect(screen.queryByText("Start work")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Mark done" }));
+    expect(actions.setStatus).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
 
     expect(actions.setStatus).toHaveBeenCalledWith(task.id, "DONE", "u_clean_1");
   });
@@ -116,8 +120,10 @@ describe("TaskDetail permissions", () => {
 
     const textarea = screen.getByPlaceholderText("Add an update for the team…");
     fireEvent.change(textarea, { target: { value: "Issue checked on site" } });
-    fireEvent.click(screen.getByRole("button", { name: /send/i }));
     fireEvent.click(screen.getByRole("button", { name: "Start work" }));
+    expect(actions.addComment).not.toHaveBeenCalled();
+    expect(actions.setStatus).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
 
     expect(actions.addComment).toHaveBeenCalledWith(task.id, "Issue checked on site", "u_care_1");
     expect(actions.setStatus).toHaveBeenCalledWith(task.id, "DOING", "u_care_1");
@@ -131,6 +137,8 @@ describe("TaskDetail permissions", () => {
       createdById: "u_resident_portal",
       reporterType: "RESIDENT",
       reporterName: "Joao - Falcon",
+      residentRequestType: "GARBAGE_BAG",
+      garbageBagQuantity: 4,
     });
 
     render(
@@ -145,6 +153,9 @@ describe("TaskDetail permissions", () => {
 
     expect(screen.getByText(/Joao - Falcon/)).not.toBeNull();
     expect(screen.getByText(/via resident portal/)).not.toBeNull();
+    expect(screen.getByText("Garbage bag")).not.toBeNull();
+    expect(screen.getByText("Requested quantity")).not.toBeNull();
+    expect(screen.getByText("4")).not.toBeNull();
 
     const assigneeSelect = screen.getByRole("combobox") as HTMLSelectElement;
     expect(assigneeSelect.value).toBe("u_clean_1");
@@ -153,6 +164,9 @@ describe("TaskDetail permissions", () => {
       target: { value: "u_care_1" },
     });
     fireEvent.click(screen.getByRole("button", { name: /accept completion/i }));
+    expect(actions.assign).not.toHaveBeenCalled();
+    expect(actions.acceptCompletion).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
 
     expect(actions.assign).toHaveBeenCalledWith(task.id, "u_care_1", "u_admin");
     expect(actions.acceptCompletion).toHaveBeenCalledWith(task.id, "u_admin");

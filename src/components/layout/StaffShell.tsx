@@ -14,6 +14,8 @@ export function StaffShell({
   subtitle,
   actions,
   backTo,
+  portalBasePath,
+  switchPortalTo = "/",
 }: {
   userId: string;
   children: React.ReactNode;
@@ -21,6 +23,8 @@ export function StaffShell({
   subtitle?: string;
   actions?: React.ReactNode;
   backTo?: string;
+  portalBasePath?: string;
+  switchPortalTo?: string;
 }) {
   const user = getUser(userId);
   const navigate = useNavigate();
@@ -36,16 +40,20 @@ export function StaffShell({
     [allTasks, userId],
   );
 
+  const homePath = portalBasePath ?? `/staff/${userId}`;
   const tabs = [
-    { to: `/staff/${userId}`, label: "Home", icon: Home, exact: true },
-    { to: `/staff/${userId}/tasks`, label: "Tasks", icon: ListChecks, badge: total },
-    ...(canCreate ? [{ to: `/staff/${userId}/new`, label: "New", icon: Plus, primary: true }] : []),
-    { to: `/staff/${userId}/sync`, label: "Sync", icon: History, badge: pending || undefined },
+    { to: homePath, label: "Home", icon: Home, exact: true },
+    { to: `${homePath}/tasks`, label: "Tasks", icon: ListChecks, badge: total },
+    ...(canCreate ? [{ to: `${homePath}/new`, label: "New", icon: Plus, primary: true }] : []),
+    { to: `${homePath}/sync`, label: "Sync", icon: History, badge: pending || undefined },
   ];
-  const homePath = `/staff/${userId}`;
   const showBack = pathname !== homePath;
 
   function handleBack() {
+    if (backTo) {
+      void navigate({ to: backTo as any });
+      return;
+    }
     if (typeof window !== "undefined" && window.history.length > 1) {
       window.history.back();
       return;
@@ -57,7 +65,7 @@ export function StaffShell({
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-20 bg-background/85 backdrop-blur border-b border-border">
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-6">
-          <Link to="/staff" className="flex items-center gap-2 focus-ring rounded-md">
+          <Link to={homePath as any} className="flex items-center gap-2 focus-ring rounded-md">
             <Avatar userId={userId} size={36} />
             <div className="min-w-0 leading-tight hidden sm:block">
               <div className="text-sm font-bold truncate">{user?.name}</div>
@@ -86,9 +94,9 @@ export function StaffShell({
             <SyncIndicator />
             {actions}
             <Link
-              to="/staff"
+              to={switchPortalTo as any}
               className="grid place-items-center size-9 rounded-md border border-border text-muted-foreground hover:bg-surface-2 focus-ring"
-              title="Switch user"
+              title="Exit portal"
             >
               <LogOut className="size-4" />
             </Link>
@@ -99,7 +107,10 @@ export function StaffShell({
       <main className="flex-1 pb-24">{children}</main>
 
       <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto max-w-3xl grid grid-cols-4">
+        <div
+          className="mx-auto max-w-3xl grid"
+          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        >
           {tabs.map((t) => {
             const active = t.exact ? pathname === t.to : pathname.startsWith(t.to);
             const Icon = t.icon;

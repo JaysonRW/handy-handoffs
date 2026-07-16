@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ArrowLeft } from "lucide-react";
-import { USERS, canSeeCreatedTasks, usersByRole } from "@/features/users/data";
+import { USERS, canSeeCreatedTasks, getPortalPathForUser, usersByRole } from "@/features/users/data";
 import { Avatar } from "@/features/users/Avatar";
 import { useTasksStore, selectVisibleForStaff } from "@/features/tasks/store";
 
@@ -39,7 +39,7 @@ function Group({ title, users }: { title: string; users: typeof USERS }) {
           return (
             <Link
               key={u.id}
-              to={`/staff/${u.id}` as any}
+              to={getPortalPathForUser(u.id) as any}
               className="surface-card p-4 flex items-center gap-3 group hover:border-primary/50 hover:bg-surface-2 focus-ring"
             >
               <Avatar userId={u.id} size={48} />

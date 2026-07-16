@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { LayoutGrid, Plus, Rows3 } from "lucide-react";
+import { ChevronDown, ChevronUp, LayoutGrid, Plus, Rows3, SlidersHorizontal } from "lucide-react";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { BLOCKS } from "@/features/blocks/data";
 import { SyncNowButton } from "@/features/sync/SyncIndicator";
@@ -29,6 +29,8 @@ function AdminTasks() {
   const [filters, setFilters] = useTaskFiltersState(initialFilters);
   const filtered = useFilteredTasks(tasks, filters);
   const [view, setView] = useState<"kanban" | "table">("kanban");
+  const [showFilters, setShowFilters] = useState(false);
+  const activeFilterCount = countActiveFilters(filters);
 
   useEffect(() => {
     const nextBlockId = search.blockId ?? "ALL";
@@ -74,6 +76,20 @@ function AdminTasks() {
             <Plus className="size-3.5" />
             New task
           </Link>
+          <button
+            type="button"
+            onClick={() => setShowFilters((current) => !current)}
+            aria-expanded={showFilters}
+            aria-controls="admin-task-filters"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-foreground focus-ring hover:border-primary/50"
+          >
+            <SlidersHorizontal className="size-3.5" />
+            {showFilters ? "Hide filters" : "Open filters"}
+            {activeFilterCount > 0 ? (
+              <span className="chip">{activeFilterCount}</span>
+            ) : null}
+            {showFilters ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+          </button>
           <div className="flex items-center gap-1 rounded-md border border-border bg-surface-2 p-1">
             <Toggle active={view === "kanban"} onClick={() => setView("kanban")} icon={<LayoutGrid className="size-3.5" />} label="Kanban" />
             <Toggle active={view === "table"} onClick={() => setView("table")} icon={<Rows3 className="size-3.5" />} label="Table" />
@@ -82,9 +98,18 @@ function AdminTasks() {
       }
     >
       <div className="flex flex-col gap-4">
-        <TaskFiltersBar value={filters} onChange={handleFiltersChange} />
+        {showFilters ? (
+          <div id="admin-task-filters">
+            <TaskFiltersBar value={filters} onChange={handleFiltersChange} />
+          </div>
+        ) : null}
         {view === "kanban" ? (
-          <TaskKanban tasks={filtered} buildHref={(t) => `/admin/tasks/${t.id}`} actorId="u_admin" />
+          <TaskKanban
+            tasks={filtered}
+            buildHref={(t) => `/admin/tasks/${t.id}`}
+            actorId="u_admin"
+            layout="admin_assignee_role"
+          />
         ) : (
           <TaskTable tasks={filtered} buildHref={(t) => `/admin/tasks/${t.id}`} actorId="u_admin" />
         )}
@@ -122,4 +147,16 @@ function buildTaskSearch(blockId: string, flatId: string) {
     blockId: blockId !== "ALL" ? blockId : undefined,
     flatId: blockId !== "ALL" && flatId !== "ALL" ? flatId : undefined,
   };
+}
+
+function countActiveFilters(filters: typeof defaultFilters) {
+  return [
+    filters.q !== defaultFilters.q,
+    filters.blockId !== defaultFilters.blockId,
+    filters.flatId !== defaultFilters.flatId,
+    filters.priority !== defaultFilters.priority,
+    filters.status !== defaultFilters.status,
+    filters.assigneeId !== defaultFilters.assigneeId,
+    filters.range !== defaultFilters.range,
+  ].filter(Boolean).length;
 }

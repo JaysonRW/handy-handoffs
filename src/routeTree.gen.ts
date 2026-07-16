@@ -9,12 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ReportRouteImport } from './routes/report'
+import { Route as CleanerRouteImport } from './routes/cleaner'
+import { Route as CaretakerRouteImport } from './routes/caretaker'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffIndexRouteImport } from './routes/staff.index'
+import { Route as ReportIndexRouteImport } from './routes/report.index'
+import { Route as CleanerIndexRouteImport } from './routes/cleaner.index'
+import { Route as CaretakerIndexRouteImport } from './routes/caretaker.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as StaffUserIdRouteImport } from './routes/staff.$userId'
 import { Route as ReportNewRouteImport } from './routes/report.new'
+import { Route as CleanerTasksRouteImport } from './routes/cleaner.tasks'
+import { Route as CleanerSyncRouteImport } from './routes/cleaner.sync'
+import { Route as CaretakerTasksRouteImport } from './routes/caretaker.tasks'
+import { Route as CaretakerSyncRouteImport } from './routes/caretaker.sync'
+import { Route as CaretakerNewRouteImport } from './routes/caretaker.new'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminSyncRouteImport } from './routes/admin.sync'
@@ -25,9 +36,26 @@ import { Route as StaffUserIdIndexRouteImport } from './routes/staff.$userId.ind
 import { Route as StaffUserIdTasksRouteImport } from './routes/staff.$userId.tasks'
 import { Route as StaffUserIdSyncRouteImport } from './routes/staff.$userId.sync'
 import { Route as StaffUserIdNewRouteImport } from './routes/staff.$userId.new'
+import { Route as CleanerTasksTaskIdRouteImport } from './routes/cleaner.tasks.$taskId'
+import { Route as CaretakerTasksTaskIdRouteImport } from './routes/caretaker.tasks.$taskId'
 import { Route as AdminTasksTaskIdRouteImport } from './routes/admin.tasks.$taskId'
 import { Route as StaffUserIdTasksTaskIdRouteImport } from './routes/staff.$userId.tasks.$taskId'
 
+const ReportRoute = ReportRouteImport.update({
+  id: '/report',
+  path: '/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CleanerRoute = CleanerRouteImport.update({
+  id: '/cleaner',
+  path: '/cleaner',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaretakerRoute = CaretakerRouteImport.update({
+  id: '/caretaker',
+  path: '/caretaker',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -43,6 +71,21 @@ const StaffIndexRoute = StaffIndexRouteImport.update({
   path: '/staff/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportIndexRoute = ReportIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ReportRoute,
+} as any)
+const CleanerIndexRoute = CleanerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CleanerRoute,
+} as any)
+const CaretakerIndexRoute = CaretakerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CaretakerRoute,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -54,9 +97,34 @@ const StaffUserIdRoute = StaffUserIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportNewRoute = ReportNewRouteImport.update({
-  id: '/report/new',
-  path: '/report/new',
-  getParentRoute: () => rootRouteImport,
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ReportRoute,
+} as any)
+const CleanerTasksRoute = CleanerTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => CleanerRoute,
+} as any)
+const CleanerSyncRoute = CleanerSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => CleanerRoute,
+} as any)
+const CaretakerTasksRoute = CaretakerTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => CaretakerRoute,
+} as any)
+const CaretakerSyncRoute = CaretakerSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => CaretakerRoute,
+} as any)
+const CaretakerNewRoute = CaretakerNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => CaretakerRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
@@ -108,6 +176,16 @@ const StaffUserIdNewRoute = StaffUserIdNewRouteImport.update({
   path: '/new',
   getParentRoute: () => StaffUserIdRoute,
 } as any)
+const CleanerTasksTaskIdRoute = CleanerTasksTaskIdRouteImport.update({
+  id: '/$taskId',
+  path: '/$taskId',
+  getParentRoute: () => CleanerTasksRoute,
+} as any)
+const CaretakerTasksTaskIdRoute = CaretakerTasksTaskIdRouteImport.update({
+  id: '/$taskId',
+  path: '/$taskId',
+  getParentRoute: () => CaretakerTasksRoute,
+} as any)
 const AdminTasksTaskIdRoute = AdminTasksTaskIdRouteImport.update({
   id: '/$taskId',
   path: '/$taskId',
@@ -122,17 +200,30 @@ const StaffUserIdTasksTaskIdRoute = StaffUserIdTasksTaskIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/caretaker': typeof CaretakerRouteWithChildren
+  '/cleaner': typeof CleanerRouteWithChildren
+  '/report': typeof ReportRouteWithChildren
   '/admin/blocks': typeof AdminBlocksRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/caretaker/new': typeof CaretakerNewRoute
+  '/caretaker/sync': typeof CaretakerSyncRoute
+  '/caretaker/tasks': typeof CaretakerTasksRouteWithChildren
+  '/cleaner/sync': typeof CleanerSyncRoute
+  '/cleaner/tasks': typeof CleanerTasksRouteWithChildren
   '/report/new': typeof ReportNewRoute
   '/staff/$userId': typeof StaffUserIdRouteWithChildren
   '/admin/': typeof AdminIndexRoute
+  '/caretaker/': typeof CaretakerIndexRoute
+  '/cleaner/': typeof CleanerIndexRoute
+  '/report/': typeof ReportIndexRoute
   '/staff/': typeof StaffIndexRoute
   '/admin/tasks/$taskId': typeof AdminTasksTaskIdRoute
+  '/caretaker/tasks/$taskId': typeof CaretakerTasksTaskIdRoute
+  '/cleaner/tasks/$taskId': typeof CleanerTasksTaskIdRoute
   '/staff/$userId/new': typeof StaffUserIdNewRoute
   '/staff/$userId/sync': typeof StaffUserIdSyncRoute
   '/staff/$userId/tasks': typeof StaffUserIdTasksRouteWithChildren
@@ -147,10 +238,20 @@ export interface FileRoutesByTo {
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/caretaker/new': typeof CaretakerNewRoute
+  '/caretaker/sync': typeof CaretakerSyncRoute
+  '/caretaker/tasks': typeof CaretakerTasksRouteWithChildren
+  '/cleaner/sync': typeof CleanerSyncRoute
+  '/cleaner/tasks': typeof CleanerTasksRouteWithChildren
   '/report/new': typeof ReportNewRoute
   '/admin': typeof AdminIndexRoute
+  '/caretaker': typeof CaretakerIndexRoute
+  '/cleaner': typeof CleanerIndexRoute
+  '/report': typeof ReportIndexRoute
   '/staff': typeof StaffIndexRoute
   '/admin/tasks/$taskId': typeof AdminTasksTaskIdRoute
+  '/caretaker/tasks/$taskId': typeof CaretakerTasksTaskIdRoute
+  '/cleaner/tasks/$taskId': typeof CleanerTasksTaskIdRoute
   '/staff/$userId/new': typeof StaffUserIdNewRoute
   '/staff/$userId/sync': typeof StaffUserIdSyncRoute
   '/staff/$userId/tasks': typeof StaffUserIdTasksRouteWithChildren
@@ -161,17 +262,30 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/caretaker': typeof CaretakerRouteWithChildren
+  '/cleaner': typeof CleanerRouteWithChildren
+  '/report': typeof ReportRouteWithChildren
   '/admin/blocks': typeof AdminBlocksRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/caretaker/new': typeof CaretakerNewRoute
+  '/caretaker/sync': typeof CaretakerSyncRoute
+  '/caretaker/tasks': typeof CaretakerTasksRouteWithChildren
+  '/cleaner/sync': typeof CleanerSyncRoute
+  '/cleaner/tasks': typeof CleanerTasksRouteWithChildren
   '/report/new': typeof ReportNewRoute
   '/staff/$userId': typeof StaffUserIdRouteWithChildren
   '/admin/': typeof AdminIndexRoute
+  '/caretaker/': typeof CaretakerIndexRoute
+  '/cleaner/': typeof CleanerIndexRoute
+  '/report/': typeof ReportIndexRoute
   '/staff/': typeof StaffIndexRoute
   '/admin/tasks/$taskId': typeof AdminTasksTaskIdRoute
+  '/caretaker/tasks/$taskId': typeof CaretakerTasksTaskIdRoute
+  '/cleaner/tasks/$taskId': typeof CleanerTasksTaskIdRoute
   '/staff/$userId/new': typeof StaffUserIdNewRoute
   '/staff/$userId/sync': typeof StaffUserIdSyncRoute
   '/staff/$userId/tasks': typeof StaffUserIdTasksRouteWithChildren
@@ -183,17 +297,30 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/caretaker'
+    | '/cleaner'
+    | '/report'
     | '/admin/blocks'
     | '/admin/login'
     | '/admin/new'
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
+    | '/caretaker/new'
+    | '/caretaker/sync'
+    | '/caretaker/tasks'
+    | '/cleaner/sync'
+    | '/cleaner/tasks'
     | '/report/new'
     | '/staff/$userId'
     | '/admin/'
+    | '/caretaker/'
+    | '/cleaner/'
+    | '/report/'
     | '/staff/'
     | '/admin/tasks/$taskId'
+    | '/caretaker/tasks/$taskId'
+    | '/cleaner/tasks/$taskId'
     | '/staff/$userId/new'
     | '/staff/$userId/sync'
     | '/staff/$userId/tasks'
@@ -208,10 +335,20 @@ export interface FileRouteTypes {
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
+    | '/caretaker/new'
+    | '/caretaker/sync'
+    | '/caretaker/tasks'
+    | '/cleaner/sync'
+    | '/cleaner/tasks'
     | '/report/new'
     | '/admin'
+    | '/caretaker'
+    | '/cleaner'
+    | '/report'
     | '/staff'
     | '/admin/tasks/$taskId'
+    | '/caretaker/tasks/$taskId'
+    | '/cleaner/tasks/$taskId'
     | '/staff/$userId/new'
     | '/staff/$userId/sync'
     | '/staff/$userId/tasks'
@@ -221,17 +358,30 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/caretaker'
+    | '/cleaner'
+    | '/report'
     | '/admin/blocks'
     | '/admin/login'
     | '/admin/new'
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
+    | '/caretaker/new'
+    | '/caretaker/sync'
+    | '/caretaker/tasks'
+    | '/cleaner/sync'
+    | '/cleaner/tasks'
     | '/report/new'
     | '/staff/$userId'
     | '/admin/'
+    | '/caretaker/'
+    | '/cleaner/'
+    | '/report/'
     | '/staff/'
     | '/admin/tasks/$taskId'
+    | '/caretaker/tasks/$taskId'
+    | '/cleaner/tasks/$taskId'
     | '/staff/$userId/new'
     | '/staff/$userId/sync'
     | '/staff/$userId/tasks'
@@ -242,13 +392,36 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
-  ReportNewRoute: typeof ReportNewRoute
+  CaretakerRoute: typeof CaretakerRouteWithChildren
+  CleanerRoute: typeof CleanerRouteWithChildren
+  ReportRoute: typeof ReportRouteWithChildren
   StaffUserIdRoute: typeof StaffUserIdRouteWithChildren
   StaffIndexRoute: typeof StaffIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/report': {
+      id: '/report'
+      path: '/report'
+      fullPath: '/report'
+      preLoaderRoute: typeof ReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cleaner': {
+      id: '/cleaner'
+      path: '/cleaner'
+      fullPath: '/cleaner'
+      preLoaderRoute: typeof CleanerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/caretaker': {
+      id: '/caretaker'
+      path: '/caretaker'
+      fullPath: '/caretaker'
+      preLoaderRoute: typeof CaretakerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -270,6 +443,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/report/': {
+      id: '/report/'
+      path: '/'
+      fullPath: '/report/'
+      preLoaderRoute: typeof ReportIndexRouteImport
+      parentRoute: typeof ReportRoute
+    }
+    '/cleaner/': {
+      id: '/cleaner/'
+      path: '/'
+      fullPath: '/cleaner/'
+      preLoaderRoute: typeof CleanerIndexRouteImport
+      parentRoute: typeof CleanerRoute
+    }
+    '/caretaker/': {
+      id: '/caretaker/'
+      path: '/'
+      fullPath: '/caretaker/'
+      preLoaderRoute: typeof CaretakerIndexRouteImport
+      parentRoute: typeof CaretakerRoute
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -286,10 +480,45 @@ declare module '@tanstack/react-router' {
     }
     '/report/new': {
       id: '/report/new'
-      path: '/report/new'
+      path: '/new'
       fullPath: '/report/new'
       preLoaderRoute: typeof ReportNewRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof ReportRoute
+    }
+    '/cleaner/tasks': {
+      id: '/cleaner/tasks'
+      path: '/tasks'
+      fullPath: '/cleaner/tasks'
+      preLoaderRoute: typeof CleanerTasksRouteImport
+      parentRoute: typeof CleanerRoute
+    }
+    '/cleaner/sync': {
+      id: '/cleaner/sync'
+      path: '/sync'
+      fullPath: '/cleaner/sync'
+      preLoaderRoute: typeof CleanerSyncRouteImport
+      parentRoute: typeof CleanerRoute
+    }
+    '/caretaker/tasks': {
+      id: '/caretaker/tasks'
+      path: '/tasks'
+      fullPath: '/caretaker/tasks'
+      preLoaderRoute: typeof CaretakerTasksRouteImport
+      parentRoute: typeof CaretakerRoute
+    }
+    '/caretaker/sync': {
+      id: '/caretaker/sync'
+      path: '/sync'
+      fullPath: '/caretaker/sync'
+      preLoaderRoute: typeof CaretakerSyncRouteImport
+      parentRoute: typeof CaretakerRoute
+    }
+    '/caretaker/new': {
+      id: '/caretaker/new'
+      path: '/new'
+      fullPath: '/caretaker/new'
+      preLoaderRoute: typeof CaretakerNewRouteImport
+      parentRoute: typeof CaretakerRoute
     }
     '/admin/users': {
       id: '/admin/users'
@@ -361,6 +590,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffUserIdNewRouteImport
       parentRoute: typeof StaffUserIdRoute
     }
+    '/cleaner/tasks/$taskId': {
+      id: '/cleaner/tasks/$taskId'
+      path: '/$taskId'
+      fullPath: '/cleaner/tasks/$taskId'
+      preLoaderRoute: typeof CleanerTasksTaskIdRouteImport
+      parentRoute: typeof CleanerTasksRoute
+    }
+    '/caretaker/tasks/$taskId': {
+      id: '/caretaker/tasks/$taskId'
+      path: '/$taskId'
+      fullPath: '/caretaker/tasks/$taskId'
+      preLoaderRoute: typeof CaretakerTasksTaskIdRouteImport
+      parentRoute: typeof CaretakerTasksRoute
+    }
     '/admin/tasks/$taskId': {
       id: '/admin/tasks/$taskId'
       path: '/$taskId'
@@ -412,6 +655,76 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface CaretakerTasksRouteChildren {
+  CaretakerTasksTaskIdRoute: typeof CaretakerTasksTaskIdRoute
+}
+
+const CaretakerTasksRouteChildren: CaretakerTasksRouteChildren = {
+  CaretakerTasksTaskIdRoute: CaretakerTasksTaskIdRoute,
+}
+
+const CaretakerTasksRouteWithChildren = CaretakerTasksRoute._addFileChildren(
+  CaretakerTasksRouteChildren,
+)
+
+interface CaretakerRouteChildren {
+  CaretakerNewRoute: typeof CaretakerNewRoute
+  CaretakerSyncRoute: typeof CaretakerSyncRoute
+  CaretakerTasksRoute: typeof CaretakerTasksRouteWithChildren
+  CaretakerIndexRoute: typeof CaretakerIndexRoute
+}
+
+const CaretakerRouteChildren: CaretakerRouteChildren = {
+  CaretakerNewRoute: CaretakerNewRoute,
+  CaretakerSyncRoute: CaretakerSyncRoute,
+  CaretakerTasksRoute: CaretakerTasksRouteWithChildren,
+  CaretakerIndexRoute: CaretakerIndexRoute,
+}
+
+const CaretakerRouteWithChildren = CaretakerRoute._addFileChildren(
+  CaretakerRouteChildren,
+)
+
+interface CleanerTasksRouteChildren {
+  CleanerTasksTaskIdRoute: typeof CleanerTasksTaskIdRoute
+}
+
+const CleanerTasksRouteChildren: CleanerTasksRouteChildren = {
+  CleanerTasksTaskIdRoute: CleanerTasksTaskIdRoute,
+}
+
+const CleanerTasksRouteWithChildren = CleanerTasksRoute._addFileChildren(
+  CleanerTasksRouteChildren,
+)
+
+interface CleanerRouteChildren {
+  CleanerSyncRoute: typeof CleanerSyncRoute
+  CleanerTasksRoute: typeof CleanerTasksRouteWithChildren
+  CleanerIndexRoute: typeof CleanerIndexRoute
+}
+
+const CleanerRouteChildren: CleanerRouteChildren = {
+  CleanerSyncRoute: CleanerSyncRoute,
+  CleanerTasksRoute: CleanerTasksRouteWithChildren,
+  CleanerIndexRoute: CleanerIndexRoute,
+}
+
+const CleanerRouteWithChildren =
+  CleanerRoute._addFileChildren(CleanerRouteChildren)
+
+interface ReportRouteChildren {
+  ReportNewRoute: typeof ReportNewRoute
+  ReportIndexRoute: typeof ReportIndexRoute
+}
+
+const ReportRouteChildren: ReportRouteChildren = {
+  ReportNewRoute: ReportNewRoute,
+  ReportIndexRoute: ReportIndexRoute,
+}
+
+const ReportRouteWithChildren =
+  ReportRoute._addFileChildren(ReportRouteChildren)
+
 interface StaffUserIdTasksRouteChildren {
   StaffUserIdTasksTaskIdRoute: typeof StaffUserIdTasksTaskIdRoute
 }
@@ -444,7 +757,9 @@ const StaffUserIdRouteWithChildren = StaffUserIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
-  ReportNewRoute: ReportNewRoute,
+  CaretakerRoute: CaretakerRouteWithChildren,
+  CleanerRoute: CleanerRouteWithChildren,
+  ReportRoute: ReportRouteWithChildren,
   StaffUserIdRoute: StaffUserIdRouteWithChildren,
   StaffIndexRoute: StaffIndexRoute,
 }

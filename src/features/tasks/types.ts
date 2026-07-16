@@ -21,6 +21,8 @@ export type ComplaintCategory =
   | "Safety"
   | "Other";
 
+export type ResidentRequestType = "ISSUE" | "GARBAGE_BAG";
+
 export interface Comment {
   id: string;
   taskId: string;
@@ -65,6 +67,8 @@ export interface Task {
   createdById: string;
   reporterType?: "USER" | "RESIDENT";
   reporterName?: string;
+  residentRequestType?: ResidentRequestType;
+  garbageBagQuantity?: number;
   assigneeId: string | null;
   createdAt: string;
   updatedAt: string;
