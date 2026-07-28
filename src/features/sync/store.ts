@@ -60,6 +60,7 @@ interface SyncState {
   pushDebugEvent: (event: Omit<SyncDebugEvent, "id" | "at">) => void;
   setTaskState: (taskId: string, state: Omit<TaskSyncState, "updatedAt">) => void;
   clearTaskState: (taskId: string) => void;
+  reset: () => void;
 }
 
 export const useSyncStore = create<SyncState>()(
@@ -119,6 +120,13 @@ export const useSyncStore = create<SyncState>()(
           const next = { ...s.taskStates };
           delete next[taskId];
           return { taskStates: next };
+        }),
+      reset: () =>
+        set({
+          syncing: false,
+          history: [],
+          taskStates: {},
+          debug: { events: [] },
         }),
     }),
     {

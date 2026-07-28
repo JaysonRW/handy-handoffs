@@ -190,6 +190,10 @@ export async function syncTasks(taskIds?: string[], trigger: "auto" | "manual" |
   }
 }
 
+export async function hydrateFromSupabase(): Promise<boolean> {
+  return hydrateFromServer("manual");
+}
+
 export function useSyncRuntime() {
   const setOnline = useSyncStore((s) => s.setOnline);
   const patchDebug = useSyncStore((s) => s.patchDebug);

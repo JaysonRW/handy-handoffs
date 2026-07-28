@@ -38,6 +38,7 @@ interface TasksState {
     activity: ActivityEntry[];
   }) => boolean;
   reset: () => void;
+  wipeLocal: () => void;
 }
 
 const now = () => new Date().toISOString();
@@ -261,17 +262,18 @@ export const useTasksStore = create<TasksState>()(
           hydratedFromServerAt: undefined,
         });
       },
+
+      wipeLocal: () => {
+        set({
+          tasks: [],
+          comments: [],
+          activity: [],
+          hydratedFromServerAt: undefined,
+        });
+      },
     }),
     {
       name: "pmtms.tasks.v2",
-      onRehydrateStorage: () => (state) => {
-        if (state && state.tasks.length === 0) {
-          const seeded = seedTasks();
-          state.tasks = seeded.tasks;
-          state.comments = seeded.comments;
-          state.activity = seeded.activity;
-        }
-      },
     },
   ),
 );

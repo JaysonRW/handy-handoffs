@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { format, formatDistanceToNow } from "date-fns";
-import { CloudOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { CloudOff, DatabaseZap, Loader2, RefreshCw, RotateCcw, Wifi, WifiOff } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { useSyncStore } from "@/features/sync/store";
 import { useTasksStore } from "@/features/tasks/store";
 import { isSupabaseConfigured, supabaseEnvStatus } from "@/lib/supabase/client";
-import { simulateOffline, triggerManualSync } from "@/features/sync/runtime";
+import { hydrateFromSupabase, simulateOffline, triggerManualSync } from "@/features/sync/runtime";
 
 export const Route = createFileRoute("/admin/sync")({
   head: () => ({ meta: [{ title: "Sync log · PMTMS Admin" }] }),
@@ -18,19 +20,74 @@ function SyncPage() {
   const history = useSyncStore((s) => s.history);
   const debug = useSyncStore((s) => s.debug);
   const tasks = useTasksStore((s) => s.tasks);
+  const comments = useTasksStore((s) => s.comments);
+  const activity = useTasksStore((s) => s.activity);
   const pending = tasks.filter((task) => !task.synced);
+  const [wiping, setWiping] = useState(false);
+  const [pulling, setPulling] = useState(false);
+
+  async function handleClearLocal() {
+    if (
+      !window.confirm(
+        "Clear ALL local tasks, comments, activity and sync history from this browser?\n\nThis only affects THIS device. Supabase is untouched.",
+      )
+    )
+      return;
+    setWiping(true);
+    try {
+      useTasksStore.getState().wipeLocal();
+      useSyncStore.getState().reset();
+      toast.success("Dados locais apagados. Agora puxando snapshot novo do Supabase...");
+      if (online && isSupabaseConfigured) {
+        const pulled = await hydrateFromSupabase();
+        if (!pulled) {
+          toast.message("Supabase retornou vazio. Tudo limpo!");
+        }
+      } else {
+        toast.message("Offline ou Supabase não configurado. Dados locais apagados com sucesso.");
+      }
+      window.location.reload();
+    } finally {
+      setWiping(false);
+    }
+  }
+
+  async function handlePullFromSupabase() {
+    if (!online || !isSupabaseConfigured) {
+      toast.error("Offline ou Supabase não configurado neste build.");
+      return;
+    }
+    setPulling(true);
+    try {
+      const pulled = await hydrateFromSupabase();
+      toast.success(pulled ? "Snapshot atualizado do Supabase." : "Supabase ainda está vazio — nada novo.");
+    } catch (error) {
+      toast.error("Falha ao puxar dados do Supabase.");
+    } finally {
+      setPulling(false);
+    }
+  }
 
   return (
     <AdminShell
       title="Sync log"
       subtitle={online ? "Connected — auto-sync is on" : "Offline — tasks queue locally"}
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => simulateOffline(online)}
             className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-semibold inline-flex items-center gap-1.5 focus-ring hover:bg-surface"
           >
             {online ? <><WifiOff className="size-3.5" />Simulate offline</> : <><Wifi className="size-3.5" />Go online</>}
+          </button>
+          <button
+            onClick={handlePullFromSupabase}
+            disabled={!online || pulling || !isSupabaseConfigured}
+            className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-semibold inline-flex items-center gap-1.5 focus-ring hover:bg-surface disabled:opacity-40"
+            title="Re-hydrate fresh from Supabase"
+          >
+            {pulling ? <Loader2 className="size-3.5 animate-spin" /> : <DatabaseZap className="size-3.5" />}
+            Pull from Supabase
           </button>
           <button
             onClick={triggerManualSync}
@@ -43,22 +100,48 @@ function SyncPage() {
       }
     >
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <section className="surface-card p-5">
-          <h2 className="text-lg font-bold mb-3">Pending tasks ({pending.length})</h2>
-          {pending.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">All caught up. No tasks waiting to sync.</p>
-          ) : (
-            <ul className="divide-y divide-border">
-              {pending.map((t) => (
-                <li key={t.id} className="py-2 flex items-center gap-3 text-sm">
-                  <CloudOff className="size-4 text-primary" />
-                  <span className="font-medium flex-1 truncate">{t.title}</span>
-                  <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(t.createdAt), { addSuffix: true })}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <div className="flex flex-col gap-6">
+          <section className="surface-card p-5">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h2 className="text-lg font-bold">Local storage</h2>
+              <button
+                onClick={handleClearLocal}
+                disabled={wiping}
+                className="rounded-md border border-destructive/40 bg-destructive/10 text-destructive px-3 py-1.5 text-xs font-semibold inline-flex items-center gap-1.5 focus-ring hover:bg-destructive hover:text-destructive-foreground disabled:opacity-40"
+                title="Wipe ALL cached tasks/comments/activity from this browser only"
+              >
+                <RotateCcw className={`size-3.5 ${wiping ? "animate-spin" : ""}`} />
+                Clear all local data
+              </button>
+            </div>
+            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <Stat label="Tasks" value={tasks.length} />
+              <Stat label="Comments" value={comments.length} />
+              <Stat label="Activity" value={activity.length} />
+              <Stat label="Pending sync" value={pending.length} />
+            </dl>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Limpar os dados locais não apaga nada no Supabase — use isso depois de resetar o banco para o frontend ficar igual ao servidor.
+            </p>
+          </section>
+
+          <section className="surface-card p-5">
+            <h2 className="text-lg font-bold mb-3">Pending tasks ({pending.length})</h2>
+            {pending.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">All caught up. No tasks waiting to sync.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {pending.map((t) => (
+                  <li key={t.id} className="py-2 flex items-center gap-3 text-sm">
+                    <CloudOff className="size-4 text-primary" />
+                    <span className="font-medium flex-1 truncate">{t.title}</span>
+                    <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(t.createdAt), { addSuffix: true })}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
         <aside className="flex flex-col gap-6">
           <section className="surface-card p-5">
             <h2 className="text-lg font-bold mb-3">Supabase status</h2>
@@ -149,5 +232,14 @@ function SyncPage() {
         </aside>
       </div>
     </AdminShell>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border border-border bg-surface-2 p-3 flex flex-col items-start">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-2xl font-black tabular-nums leading-tight mt-1">{value}</div>
+    </div>
   );
 }
