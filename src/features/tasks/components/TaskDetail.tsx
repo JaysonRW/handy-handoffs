@@ -7,7 +7,7 @@ import type { Task, Priority, Role } from "@/features/tasks/types";
 import { PriorityBadge } from "./PriorityBadge";
 import { StatusBadge } from "./StatusBadge";
 import { Avatar } from "@/features/users/Avatar";
-import { getBlock, getFlat } from "@/features/blocks/data";
+import { getBlock, getFlatLabel } from "@/features/blocks/data";
 import { USERS, canCommentOnTasks, canCompleteAssignedTasks, canStartAssignedTasks, getUser, usersByRole } from "@/features/users/data";
 import { useTasksStore } from "@/features/tasks/store";
 
@@ -42,7 +42,6 @@ export function TaskDetail({
   const activity = allActivity.filter((entry) => entry.taskId === task.id);
 
   const block = getBlock(task.blockId);
-  const flat = getFlat(task.blockId, task.flatId);
   const creator = getUser(task.createdById);
   const assignable = [...usersByRole("CARETAKER"), ...usersByRole("CLEANER")];
   const reporterName = task.reporterType === "RESIDENT"
@@ -159,7 +158,7 @@ export function TaskDetail({
           <div className="flex flex-wrap items-center gap-2">
             <PriorityBadge priority={task.priority} />
             <StatusBadge status={task.status} />
-            <span className="chip">{block?.name} · Flat {flat?.label}</span>
+            <span className="chip">{block?.name} · Flat {getFlatLabel(task.blockId, task.flatId)}</span>
             {task.problemCategory && <span className="chip">{task.problemCategory}</span>}
             {task.complaintCategory && <span className="chip">{task.complaintCategory}</span>}
             {task.residentRequestType === "GARBAGE_BAG" && <span className="chip">Garbage bag</span>}

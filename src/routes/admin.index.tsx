@@ -7,7 +7,7 @@ import { SyncIndicator } from "@/features/sync/SyncIndicator";
 import { PriorityBadge } from "@/features/tasks/components/PriorityBadge";
 import { StatusBadge } from "@/features/tasks/components/StatusBadge";
 import { Avatar } from "@/features/users/Avatar";
-import { getBlock, getFlat } from "@/features/blocks/data";
+import { getBlock, getFlatLabel } from "@/features/blocks/data";
 import { USERS } from "@/features/users/data";
 
 export const Route = createFileRoute("/admin/")({
@@ -53,7 +53,6 @@ function AdminOverview() {
             <ul className="flex flex-col divide-y divide-border">
               {newest.map((t) => {
                 const block = getBlock(t.blockId);
-                const flat = getFlat(t.blockId, t.flatId);
                 return (
                   <li key={t.id}>
                     <Link to={`/admin/tasks/${t.id}` as any} className="flex items-center gap-3 py-3 hover:bg-surface-2/40 rounded-md px-2 -mx-2 focus-ring">
@@ -66,7 +65,7 @@ function AdminOverview() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <PriorityBadge priority={t.priority} short />
                           <StatusBadge status={t.status} />
-                          <span className="chip">{block?.name} · {flat?.label}</span>
+                          <span className="chip">{block?.name} · {getFlatLabel(t.blockId, t.flatId)}</span>
                           {!t.synced && <span className="chip border-accent/40 bg-accent/15 text-accent-foreground"><CloudOff className="size-3" />Pending</span>}
                         </div>
                         <p className="mt-1 text-sm font-medium line-clamp-1">{t.title}</p>

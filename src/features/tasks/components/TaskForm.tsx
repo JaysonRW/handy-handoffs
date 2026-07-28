@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Camera, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
-import { BLOCKS } from "@/features/blocks/data";
+import { BLOCKS, getFlatLabel } from "@/features/blocks/data";
 import type { ResidentRequestType, Task } from "@/features/tasks/types";
 import { useTasksStore } from "@/features/tasks/store";
 import { useSyncStore } from "@/features/sync/store";
@@ -338,16 +338,16 @@ function buildTaskTitle(description: string, blockId: string, flatId: string) {
   const normalized = description.replace(/\s+/g, " ").trim();
   const preview = normalized.length > 60 ? `${normalized.slice(0, 57).trimEnd()}...` : normalized;
   const block = BLOCKS.find((item) => item.id === blockId);
-  const flat = block?.flats.find((item) => item.id === flatId);
-  const location = [block?.name, flat?.label ? `Flat ${flat.label}` : null].filter(Boolean).join(" · ");
+  const flatLabel = getFlatLabel(blockId, flatId);
+  const location = [block?.name, `Flat ${flatLabel}`].filter(Boolean).join(" · ");
 
   return location ? `${location} · ${preview}` : preview;
 }
 
 function buildGarbageBagTitle(blockId: string, flatId: string, quantity: number) {
   const block = BLOCKS.find((item) => item.id === blockId);
-  const flat = block?.flats.find((item) => item.id === flatId);
-  const location = [block?.name, flat?.label ? `Flat ${flat.label}` : null].filter(Boolean).join(" · ");
+  const flatLabel = getFlatLabel(blockId, flatId);
+  const location = [block?.name, `Flat ${flatLabel}`].filter(Boolean).join(" · ");
   const label = `Bins bags request x${quantity}`;
 
   return location ? `${location} · ${label}` : label;

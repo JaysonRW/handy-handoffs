@@ -8,7 +8,7 @@ import { useTasksStore } from "@/features/tasks/store";
 import { PriorityBadge } from "./PriorityBadge";
 import { StatusBadge } from "./StatusBadge";
 import { Avatar } from "@/features/users/Avatar";
-import { getBlock, getFlat } from "@/features/blocks/data";
+import { getBlock, getFlatLabel } from "@/features/blocks/data";
 import { getUser } from "@/features/users/data";
 import { TaskSyncNowButton } from "@/features/sync/SyncIndicator";
 
@@ -55,7 +55,6 @@ export function TaskTable({
           <tbody>
             {tasks.map((t) => {
               const block = getBlock(t.blockId);
-              const flat = getFlat(t.blockId, t.flatId);
               const a = getUser(t.assigneeId);
               const open = canQuick && quick.taskId === t.id;
               const draft = open ? quick.text : "";
@@ -72,7 +71,7 @@ export function TaskTable({
                       </Link>
                       <div className="text-xs text-muted-foreground line-clamp-1">{t.description}</div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{block?.name} · {flat?.label}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{block?.name} · {getFlatLabel(t.blockId, t.flatId)}</td>
                     <td className="px-4 py-3">
                       {canQuick ? (
                         <div className="grid grid-cols-3 gap-1 min-w-[120px]">
