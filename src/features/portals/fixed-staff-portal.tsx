@@ -1,4 +1,4 @@
-import { Link, notFound } from "@tanstack/react-router";
+import { Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ArrowRight, CheckCircle2, CloudOff, Inbox, ListChecks, Plus } from "lucide-react";
 import { StaffShell } from "@/components/layout/StaffShell";
@@ -32,14 +32,14 @@ export function FixedStaffHome({ userId, basePath }: FixedPortalProps) {
   );
   const canCreate = canCreateTaskFromStaffPortal(user.role);
   const canSeeCreated = canSeeCreatedTasks(user.role);
-
   const newQ = tasks.filter((t) => t.status === "NEW");
-  const doing = tasks.filter((t) => t.status === "DOING");
   const done = tasks.filter((t) => t.status === "DONE");
   const pendingSync = tasks.filter((t) => !t.synced);
+
+  const doing = tasks.filter((t) => t.status === "DOING");
   const myActive = tasks
     .filter((t) => t.assigneeId === userId && t.status !== "DONE")
-    .slice(0, 4);
+  const isCleanerPortal = user.role === "CLEANER";
 
   return (
     <StaffShell
@@ -66,11 +66,24 @@ export function FixedStaffHome({ userId, basePath }: FixedPortalProps) {
           </Link>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <Mini label="My active" value={doing.filter((t) => t.assigneeId === userId).length} icon={ListChecks} />
-          <Mini label={canSeeCreated ? "In review" : "New assigned"} value={canSeeCreated ? newQ.filter((t) => t.createdById === userId).length : newQ.length} icon={Inbox} />
-          <Mini label="Completed" value={done.length} icon={CheckCircle2} />
-          <Mini label="Pending sync" value={pendingSync.length} icon={CloudOff} tone="accent" />
+          {!isCleanerPortal && (
+            <>
+              <Mini
+                label={canSeeCreated ? "In review" : "New assigned"}
+                value={canSeeCreated ? newQ.filter((t) => t.createdById === userId).length : newQ.length}
+                icon={Inbox}
+              />
+              <Mini label="Completed" value={done.length} icon={CheckCircle2} />
+              <Mini
+                label="Pending sync"
+                value={pendingSync.length}
+                icon={CloudOff}
+                tone="accent"
+              />
+            </>
+          )}
         </div>
 
         <section>
@@ -83,7 +96,13 @@ export function FixedStaffHome({ userId, basePath }: FixedPortalProps) {
           ) : (
             <div className="flex flex-col gap-2">
               {myActive.map((t) => (
-                <TaskCard key={t.id} task={t} href={`${basePath}/tasks/${t.id}`} compact />
+                <TaskCard
+                  key={t.id}
+                  task={t}
+                  href={`${basePath}/tasks/${t.id}`}
+                  compact
+                  hideStatusBadge={isCleanerPortal}
+                />
               ))}
             </div>
           )}
@@ -96,7 +115,13 @@ export function FixedStaffHome({ userId, basePath }: FixedPortalProps) {
 export function FixedStaffTasks({ userId, basePath }: FixedPortalProps) {
   const user = getUser(userId)!;
   const allTasks = useTasksStore((s) => s.tasks);
-  const tasks = useMemo(() => selectVisibleForStaff(userId)({ tasks: allTasks } as any), [allTasks, userId]);
+  const visibleTasks = useMemo(() => selectVisibleForStaff(userId)({ tasks: allTasks } as any), [allTasks, userId]);
+  const tasks = useMemo(() => {
+    if (user.role === "CLEANER") {
+      return visibleTasks.filter((t) => t.status !== "DONE");
+    }
+    return visibleTasks;
+  }, [visibleTasks, user.role]);
   const [filters, setFilters] = useTaskFiltersState();
   const filtered = useFilteredTasks(tasks, filters);
 
@@ -104,18 +129,27 @@ export function FixedStaffTasks({ userId, basePath }: FixedPortalProps) {
     <StaffShell
       userId={userId}
       title="My tasks"
-      subtitle={`${filtered.length} of ${tasks.length} · ${user.role.toLowerCase()}`}
-      actions={<SyncNowButton taskIds={tasks.map((task) => task.id)} />}
+      subtitle={`${filtered.length} ${user.role === "CLEANER" ? "pending" : `of ${visibleTasks.length}`} · ${user.role.toLowerCase()}`}
+      actions={<SyncNowButton taskIds={visibleTasks.map((task) => task.id)} />}
       portalBasePath={basePath}
     >
       <div className="max-w-3xl mx-auto px-4 pt-4 flex flex-col gap-3">
-        <TaskFiltersBar value={filters} onChange={setFilters} hideAssignee={user.role === "CLEANER"} />
+        {user.role !== "CLEANER" && (
+          <TaskFiltersBar value={filters} onChange={setFilters} hideAssignee={false} />
+        )}
         {filtered.length === 0 ? (
-          <div className="surface-card p-8 text-center text-sm text-muted-foreground">No tasks match these filters.</div>
+          <div className="surface-card p-8 text-center text-sm text-muted-foreground">
+            {user.role === "CLEANER" ? "No pending tasks. All caught up." : "No tasks match these filters."}
+          </div>
         ) : (
           <div className="flex flex-col gap-2">
             {filtered.map((t) => (
-              <TaskCard key={t.id} task={t} href={`${basePath}/tasks/${t.id}`} />
+              <TaskCard
+                key={t.id}
+                task={t}
+                href={`${basePath}/tasks/${t.id}`}
+                hideStatusBadge={user.role === "CLEANER"}
+              />
             ))}
           </div>
         )}
@@ -153,14 +187,33 @@ export function FixedStaffTaskDetail({
   basePath,
   taskId,
 }: FixedPortalProps & { taskId: string }) {
+  const navigate = useNavigate();
   const user = getUser(userId)!;
   const allTasks = useTasksStore((s) => s.tasks);
   const visibleTasks = useMemo(
     () => selectVisibleForStaff(userId)({ tasks: allTasks } as any),
     [allTasks, userId],
   );
+  const cleanerActiveTasks = useMemo(() => {
+    if (user.role !== "CLEANER") return [];
+    return visibleTasks
+      .filter((t) => t.assigneeId === userId && t.status !== "DONE")
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }, [visibleTasks, userId, user.role]);
+
   const task = visibleTasks.find((item) => item.id === taskId);
   if (!task) throw notFound();
+
+  const onCleanerCompleted = user.role === "CLEANER"
+    ? () => {
+        const remaining = cleanerActiveTasks.filter((t) => t.id !== taskId);
+        if (remaining.length > 0) {
+          navigate({ to: `${basePath}/tasks/${remaining[0]!.id}` as any });
+        } else {
+          navigate({ to: `${basePath}/tasks` as any });
+        }
+      }
+    : undefined;
 
   return (
     <StaffShell
@@ -171,7 +224,14 @@ export function FixedStaffTaskDetail({
       backTo={`${basePath}/tasks`}
       portalBasePath={basePath}
     >
-      <TaskDetail task={task} actorId={userId} actorRole={user.role} backHref={`${basePath}/tasks`} isAdmin={false} />
+      <TaskDetail
+        task={task}
+        actorId={userId}
+        actorRole={user.role}
+        backHref={`${basePath}/tasks`}
+        isAdmin={false}
+        onCleanerCompleted={onCleanerCompleted}
+      />
     </StaffShell>
   );
 }

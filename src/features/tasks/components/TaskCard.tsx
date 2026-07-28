@@ -15,11 +15,13 @@ export function TaskCard({
   href,
   compact = false,
   actions,
+  hideStatusBadge = false,
 }: {
   task: Task;
   href: string;
   compact?: boolean;
   actions?: React.ReactNode;
+  hideStatusBadge?: boolean;
 }) {
   const navigate = useNavigate();
   const block = getBlock(task.blockId);
@@ -63,7 +65,7 @@ export function TaskCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <PriorityBadge priority={task.priority} short />
-            <StatusBadge status={task.status} />
+            {!hideStatusBadge && <StatusBadge status={task.status} />}
             <span className="chip">{block?.name} · {flat?.label}</span>
           </div>
           <h3 className="mt-2 text-sm font-semibold leading-snug line-clamp-2">{task.title}</h3>

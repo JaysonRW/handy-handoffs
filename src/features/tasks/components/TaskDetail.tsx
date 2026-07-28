@@ -17,12 +17,14 @@ export function TaskDetail({
   actorRole,
   backHref,
   isAdmin,
+  onCleanerCompleted,
 }: {
   task: Task;
   actorId: string;
   actorRole: Role;
   backHref: string;
   isAdmin: boolean;
+  onCleanerCompleted?: () => void;
 }) {
   type DraftAction = "reopen" | "acceptCompletion" | null;
 
@@ -137,6 +139,13 @@ export function TaskDetail({
 
     setSaving(false);
     toast.success("Alteracoes salvas localmente. Use Sync now para enviar ao Supabase.");
+
+    const becameDone =
+      (nextAction === "acceptCompletion") ||
+      (nextStatus === "DONE" && nextStatus !== task.status);
+    if (actorRole === "CLEANER" && becameDone && onCleanerCompleted) {
+      onCleanerCompleted();
+    }
   }
 
   return (
@@ -349,23 +358,25 @@ export function TaskDetail({
           )}
         </div>
 
-        <div className="surface-card p-4">
-          <h3 className="text-sm font-semibold mb-3">Activity</h3>
-          <ol className="relative border-l border-border ml-2 flex flex-col gap-3">
-            {activity.map((a) => {
-              const u = USERS.find((x) => x.id === a.actorId);
-              return (
-                <li key={a.id} className="pl-4 relative">
-                  <span className="absolute -left-[5px] top-1.5 size-2 rounded-full bg-primary" />
-                  <p className="text-xs">{a.message}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
-                    {u?.name ?? "System"} · {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
-                  </p>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
+        {isAdmin && (
+          <div className="surface-card p-4">
+            <h3 className="text-sm font-semibold mb-3">Activity</h3>
+            <ol className="relative border-l border-border ml-2 flex flex-col gap-3">
+              {activity.map((a) => {
+                const u = USERS.find((x) => x.id === a.actorId);
+                return (
+                  <li key={a.id} className="pl-4 relative">
+                    <span className="absolute -left-[5px] top-1.5 size-2 rounded-full bg-primary" />
+                    <p className="text-xs">{a.message}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
+                      {u?.name ?? "System"} · {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
+                    </p>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        )}
       </section>
     </div>
   );

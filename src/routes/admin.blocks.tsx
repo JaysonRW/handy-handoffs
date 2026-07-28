@@ -11,7 +11,7 @@ export const Route = createFileRoute("/admin/blocks")({
 function BlocksPage() {
   const tasks = useTasksStore((s) => s.tasks);
   return (
-    <AdminShell title="Blocks & flats" subtitle={`${BLOCKS.length} blocks · ${BLOCKS.reduce((a, b) => a + b.flats.length, 0)} flats`}>
+    <AdminShell title="Building & Flats" subtitle={`${BLOCKS.length} blocks · ${BLOCKS.reduce((a, b) => a + b.flats.length, 0)} flats`}>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {BLOCKS.map((b) => {
           const open = tasks.filter((t) => t.blockId === b.id && t.status !== "DONE").length;
