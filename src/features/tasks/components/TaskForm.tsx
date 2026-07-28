@@ -106,7 +106,7 @@ export function TaskForm({
     });
     // #endregion
     const normalizedDescription = isGarbageBagRequest
-      ? buildGarbageBagDescription(normalizedQuantity, desc.trim())
+      ? buildGarbageBagDescription(normalizedQuantity)
       : desc.trim();
     const generatedTitle = isGarbageBagRequest
       ? buildGarbageBagTitle(blockId, flatId, normalizedQuantity)
@@ -115,7 +115,7 @@ export function TaskForm({
       {
         title: generatedTitle,
         description: normalizedDescription,
-        photo: photo ?? undefined,
+        photo: isGarbageBagRequest ? undefined : photo ?? undefined,
         blockId,
         flatId,
         createdById: creatorId,
@@ -194,7 +194,7 @@ export function TaskForm({
           <div className="grid grid-cols-2 gap-2">
             {([
               { value: "ISSUE", label: "Issue report", description: "General maintenance or complaint." },
-              { value: "GARBAGE_BAG", label: "Garbage bag", description: "Request bags with a fixed quantity." },
+              { value: "GARBAGE_BAG", label: "Bins bags", description: "bags requests" },
             ] as const).map((option) => (
               <button
                 key={option.value}
@@ -214,35 +214,37 @@ export function TaskForm({
         </Section>
       )}
 
-      <Section title="Photo" hint="Optional, but helpful for triage.">
-        {photo ? (
-          <div className="relative">
-            <img src={photo} alt="" className="w-full h-56 object-cover rounded-lg border border-border" />
-            <button
-              type="button"
-              onClick={() => setPhoto(null)}
-              className="absolute top-2 right-2 size-8 grid place-items-center rounded-full bg-background/80 backdrop-blur border border-border hover:bg-destructive hover:text-destructive-foreground focus-ring"
-              aria-label="Remove photo"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        ) : (
-          <label className="surface-card flex flex-col items-center justify-center gap-2 p-8 text-muted-foreground border-dashed cursor-pointer hover:border-primary/50 hover:text-foreground focus-within:border-primary">
-            {busyPhoto ? <Loader2 className="size-6 animate-spin" /> : <Camera className="size-6" />}
-            <span className="text-sm font-medium">Take or upload a photo</span>
-            <span className="text-xs">JPG / PNG · optional · auto-resized</span>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="sr-only"
-              onChange={(e) => onPhoto(e.target.files?.[0] ?? null)}
-            />
-          </label>
-        )}
-      </Section>
+      {!isGarbageBagRequest && (
+        <Section title="Photo" hint="Optional, but helpful for triage.">
+          {photo ? (
+            <div className="relative">
+              <img src={photo} alt="" className="w-full h-56 object-cover rounded-lg border border-border" />
+              <button
+                type="button"
+                onClick={() => setPhoto(null)}
+                className="absolute top-2 right-2 size-8 grid place-items-center rounded-full bg-background/80 backdrop-blur border border-border hover:bg-destructive hover:text-destructive-foreground focus-ring"
+                aria-label="Remove photo"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : (
+            <label className="surface-card flex flex-col items-center justify-center gap-2 p-8 text-muted-foreground border-dashed cursor-pointer hover:border-primary/50 hover:text-foreground focus-within:border-primary">
+              {busyPhoto ? <Loader2 className="size-6 animate-spin" /> : <Camera className="size-6" />}
+              <span className="text-sm font-medium">Take or upload a photo</span>
+              <span className="text-xs">JPG / PNG · optional · auto-resized</span>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="sr-only"
+                onChange={(e) => onPhoto(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          )}
+        </Section>
+      )}
 
       {isGarbageBagRequest && (
         <Section title="Quantity" required hint="Enter how many garbage bags the resident is requesting.">
@@ -280,28 +282,22 @@ export function TaskForm({
         </div>
       </Section>
 
-      <Section
-        title={isGarbageBagRequest ? "Notes" : "Description"}
-        required={!isGarbageBagRequest}
-        hint={
-          isGarbageBagRequest
-            ? "Optional note for the admin team."
-            : "Describe the issue and where it is happening."
-        }
-      >
-        <textarea
-          value={desc}
-          onChange={(e) => setDesc(e.target.value)}
-          rows={4}
-          maxLength={500}
-          placeholder={
-            isGarbageBagRequest
-              ? "Optional: add delivery notes or any extra detail."
-              : "Describe the issue and where it is happening."
-          }
-          className="w-full bg-surface-2 border border-border rounded-md px-3 py-2.5 text-sm focus-ring resize-none"
-        />
-      </Section>
+      {!isGarbageBagRequest && (
+        <Section
+          title="Description"
+          required
+          hint="Describe the issue and where it is happening."
+        >
+          <textarea
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            rows={4}
+            maxLength={500}
+            placeholder="Describe the issue and where it is happening."
+            className="w-full bg-surface-2 border border-border rounded-md px-3 py-2.5 text-sm focus-ring resize-none"
+          />
+        </Section>
+      )}
 
       <div className="flex items-center justify-between gap-3 pt-2">
         {isResidentPortal ? (
@@ -352,14 +348,13 @@ function buildGarbageBagTitle(blockId: string, flatId: string, quantity: number)
   const block = BLOCKS.find((item) => item.id === blockId);
   const flat = block?.flats.find((item) => item.id === flatId);
   const location = [block?.name, flat?.label ? `Flat ${flat.label}` : null].filter(Boolean).join(" · ");
-  const label = `Garbage bag request x${quantity}`;
+  const label = `Bins bags request x${quantity}`;
 
   return location ? `${location} · ${label}` : label;
 }
 
-function buildGarbageBagDescription(quantity: number, notes: string) {
-  const summary = `Resident requested ${quantity} garbage bag${quantity > 1 ? "s" : ""}.`;
-  return notes ? `${summary}\n\nNotes: ${notes}` : summary;
+function buildGarbageBagDescription(quantity: number) {
+  return `Resident requested ${quantity} bins bags.`;
 }
 
 function Section({ title, required, hint, children }: { title: string; required?: boolean; hint?: string; children: React.ReactNode }) {
