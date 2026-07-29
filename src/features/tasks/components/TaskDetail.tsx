@@ -35,6 +35,7 @@ export function TaskDetail({
   const acceptCompletion = useTasksStore((s) => s.acceptCompletion);
   const addComment = useTasksStore((s) => s.addComment);
   const addPhoto = useTasksStore((s) => s.addPhoto);
+  const setBeforeAfterPhoto = useTasksStore((s) => s.setBeforeAfterPhoto);
 
   const allComments = useTasksStore((s) => s.comments);
   const allActivity = useTasksStore((s) => s.activity);
@@ -59,9 +60,17 @@ export function TaskDetail({
   const isCreatedByActor = task.createdById === actorId;
   const canEdit = isAdmin || (canCommentOnTasks(actorRole) && (isAssignedToActor || isCreatedByActor));
   const canTransition = isAdmin || (canCompleteAssignedTasks(actorRole) && isAssignedToActor);
+  const canUploadAfter = actorRole === "CARETAKER" || isAdmin;
+  const showBeforeAfter = actorRole !== "RESIDENT";
+  const beforePhoto = showBeforeAfter ? task.beforePhoto ?? task.photo : undefined;
+  const afterPhoto = showBeforeAfter ? task.afterPhoto : undefined;
   const visiblePhotos = useMemo(
-    () => [task.photo, ...(task.extraPhotos ?? []), ...pendingPhotos].filter(Boolean) as string[],
-    [pendingPhotos, task.extraPhotos, task.photo],
+    () =>
+      [
+        ...(task.extraPhotos ?? []),
+        ...pendingPhotos,
+      ].filter(Boolean) as string[],
+    [pendingPhotos, task.extraPhotos],
   );
   const hasChanges =
     draftPriority !== task.priority ||
@@ -95,6 +104,16 @@ export function TaskDetail({
     if (!file) return;
     const dataUrl = await fileToDataUrl(file);
     setPendingPhotos((current) => [...current, dataUrl]);
+  }
+
+  async function handleAfterPhotoUpload(file: File | null) {
+    if (!file) return;
+    const dataUrl = await fileToDataUrl(file);
+    setBeforeAfterPhoto(task.id, "AFTER", dataUrl, actorId);
+  }
+
+  function handleAfterPhotoRemove() {
+    setBeforeAfterPhoto(task.id, "AFTER", null, actorId);
   }
 
   function handleSave() {
@@ -181,6 +200,82 @@ export function TaskDetail({
               {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}
             </span>
           </div>
+
+          {showBeforeAfter && (
+            <section className="mt-5">
+              <h3 className="text-sm font-semibold mb-2 px-1">Before / After</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="surface-card border rounded-lg overflow-hidden flex flex-col">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-surface-2/60">
+                    <span className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Before</span>
+                  </div>
+                  <div className="aspect-[4/3] grid place-items-center bg-surface-2/40 relative">
+                    {beforePhoto ? (
+                      <img
+                        src={beforePhoto}
+                        alt="Before"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-center text-xs text-muted-foreground p-4">
+                        <Camera className="size-5 mx-auto mb-1 opacity-50" />
+                        No before photo
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="surface-card border rounded-lg overflow-hidden flex flex-col">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-surface-2/60">
+                    <span className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">After</span>
+                    {canUploadAfter && afterPhoto && (
+                      <button
+                        type="button"
+                        onClick={handleAfterPhotoRemove}
+                        className="text-[10px] text-destructive hover:text-destructive/80 font-semibold px-1.5 py-0.5 rounded hover:bg-destructive/10 focus-ring"
+                        title="Remove after photo"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="aspect-[4/3] grid place-items-center bg-surface-2/40 relative">
+                    {afterPhoto ? (
+                      <>
+                        <img
+                          src={afterPhoto}
+                          alt="After"
+                          className="w-full h-full object-cover"
+                        />
+                      </>
+                    ) : canUploadAfter ? (
+                      <label className="flex flex-col items-center justify-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground hover:bg-surface/40 transition w-full h-full">
+                        <Camera className="size-6 text-primary" />
+                        <span className="font-semibold text-foreground/80">Add after photo</span>
+                        <span className="text-[10px]">Caretaker upload</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="sr-only"
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            await handleAfterPhotoUpload(f);
+                            e.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                    ) : (
+                      <div className="text-center text-xs text-muted-foreground p-4">
+                        <Camera className="size-5 mx-auto mb-1 opacity-50" />
+                        No after photo yet
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
 
           {visiblePhotos.length > 0 && (
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">

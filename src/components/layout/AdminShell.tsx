@@ -5,9 +5,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Building2,
-  Users,
   CloudOff,
-  History,
   LogOut,
 } from "lucide-react";
 import { SyncIndicator } from "@/features/sync/SyncIndicator";
@@ -19,8 +17,6 @@ const items: NavItem[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/admin/tasks", label: "Tasks", icon: ListChecks },
   { to: "/admin/blocks", label: "Building & Flats", icon: Building2 },
-  { to: "/admin/users", label: "Team", icon: Users },
-  { to: "/admin/sync", label: "Sync log", icon: History },
 ];
 
 export function AdminShell({

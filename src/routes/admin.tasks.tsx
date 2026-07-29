@@ -5,10 +5,12 @@ import { AdminShell } from "@/components/layout/AdminShell";
 import { BLOCKS } from "@/features/blocks/data";
 import { SyncNowButton } from "@/features/sync/SyncIndicator";
 import { useTasksStore } from "@/features/tasks/store";
-import { TaskFiltersBar, defaultFilters, useFilteredTasks, useTaskFiltersState } from "@/features/tasks/components/TaskFilters";
+import { TaskFiltersBar, defaultFilters, useFilteredTasks, useTaskFiltersState, type TaskFilters } from "@/features/tasks/components/TaskFilters";
 import { TaskKanban } from "@/features/tasks/components/TaskKanban";
 import { TaskTable } from "@/features/tasks/components/TaskTable";
 import { cn } from "@/lib/utils";
+
+import type { Priority, TaskStatus } from "@/features/tasks/types";
 
 export const Route = createFileRoute("/admin/tasks")({
   validateSearch: (search: Record<string, unknown>) => sanitizeTaskSearch(search),
@@ -25,7 +27,9 @@ function AdminTasks() {
     ...defaultFilters,
     blockId: search.blockId ?? "ALL",
     flatId: search.flatId ?? "ALL",
-  }), [search.blockId, search.flatId]);
+    priority: (search.priority as TaskFilters["priority"]) ?? "ALL",
+    status: (search.status as TaskFilters["status"]) ?? "ALL",
+  }), [search.blockId, search.flatId, search.priority, search.status]);
   const [filters, setFilters] = useTaskFiltersState(initialFilters);
   const filtered = useFilteredTasks(tasks, filters);
   const [view, setView] = useState<"kanban" | "table">("kanban");
@@ -35,13 +39,24 @@ function AdminTasks() {
   useEffect(() => {
     const nextBlockId = search.blockId ?? "ALL";
     const nextFlatId = search.flatId ?? "ALL";
+    const nextPriority = (search.priority as TaskFilters["priority"]) ?? "ALL";
+    const nextStatus = (search.status as TaskFilters["status"]) ?? "ALL";
 
     setFilters((current) =>
-      current.blockId === nextBlockId && current.flatId === nextFlatId
+      current.blockId === nextBlockId &&
+      current.flatId === nextFlatId &&
+      current.priority === nextPriority &&
+      current.status === nextStatus
         ? current
-        : { ...current, blockId: nextBlockId, flatId: nextFlatId },
+        : {
+            ...current,
+            blockId: nextBlockId,
+            flatId: nextFlatId,
+            priority: nextPriority,
+            status: nextStatus,
+          },
     );
-  }, [search.blockId, search.flatId, setFilters]);
+  }, [search.blockId, search.flatId, search.priority, search.status, setFilters]);
 
   if (pathname !== "/admin/tasks") {
     return <Outlet />;
@@ -50,8 +65,18 @@ function AdminTasks() {
   function handleFiltersChange(nextFilters: typeof filters) {
     setFilters(nextFilters);
 
-    const nextSearch = buildTaskSearch(nextFilters.blockId, nextFilters.flatId);
-    if (search.blockId === nextSearch.blockId && search.flatId === nextSearch.flatId) {
+    const nextSearch = buildTaskSearch(
+      nextFilters.blockId,
+      nextFilters.flatId,
+      nextFilters.priority,
+      nextFilters.status,
+    );
+    if (
+      search.blockId === nextSearch.blockId &&
+      search.flatId === nextSearch.flatId &&
+      search.priority === nextSearch.priority &&
+      search.status === nextSearch.status
+    ) {
       return;
     }
 
@@ -130,22 +155,39 @@ function Toggle({ active, onClick, icon, label }: { active: boolean; onClick: ()
   );
 }
 
+const VALID_PRIORITIES: Priority[] = ["P1", "P2", "P3", null];
+const VALID_STATUS: TaskStatus[] = ["NEW", "DOING", "DONE"];
+
 function sanitizeTaskSearch(search: Record<string, unknown>) {
   const rawBlockId = typeof search.blockId === "string" ? search.blockId : undefined;
   const block = rawBlockId ? BLOCKS.find((item) => item.id === rawBlockId) : undefined;
   const rawFlatId = typeof search.flatId === "string" ? search.flatId : undefined;
   const flat = rawFlatId ? block?.flats.find((item) => item.id === rawFlatId) : undefined;
+  const rawPriority = typeof search.priority === "string" ? (search.priority as Priority) : undefined;
+  const priority =
+    rawPriority !== undefined && VALID_PRIORITIES.includes(rawPriority) ? rawPriority : undefined;
+  const rawStatus = typeof search.status === "string" ? (search.status as TaskStatus) : undefined;
+  const status = rawStatus && VALID_STATUS.includes(rawStatus) ? rawStatus : undefined;
 
   return {
     blockId: block?.id,
     flatId: flat?.id,
+    priority,
+    status,
   };
 }
 
-function buildTaskSearch(blockId: string, flatId: string) {
+function buildTaskSearch(
+  blockId: string,
+  flatId: string,
+  priority: TaskFilters["priority"] = "ALL",
+  status: TaskFilters["status"] = "ALL",
+) {
   return {
     blockId: blockId !== "ALL" ? blockId : undefined,
     flatId: blockId !== "ALL" && flatId !== "ALL" ? flatId : undefined,
+    priority: priority !== "ALL" ? priority : undefined,
+    status: status !== "ALL" ? status : undefined,
   };
 }
 

@@ -6,7 +6,7 @@ import {
 } from "@/lib/supabase/client";
 import { useSyncStore } from "@/features/sync/store";
 import { nanoid } from "@/lib/id";
-import type { ActivityEntry, Comment, Task } from "./types";
+import type { ActivityEntry, Comment, Task, TaskAttachmentKind } from "./types";
 
 type TaskRow = {
   id: string;
@@ -55,7 +55,7 @@ type AttachmentRow = {
   storage_path: string;
   file_name: string | null;
   mime_type: string | null;
-  kind: "PRIMARY" | "EXTRA";
+  kind: TaskAttachmentKind;
   created_at: string;
 };
 
@@ -119,19 +119,31 @@ function getPublicStorageUrl(storagePath: string) {
 }
 
 function mergeSnapshotAttachments(tasks: Task[], attachments: AttachmentRow[]) {
-  const attachmentsByTask = new Map<string, string[]>();
+  const extrasByTask = new Map<string, string[]>();
+  const beforeByTask = new Map<string, string>();
+  const afterByTask = new Map<string, string>();
 
   for (const attachment of attachments) {
-    if (attachment.kind !== "EXTRA") continue;
-    const current = attachmentsByTask.get(attachment.task_id) ?? [];
-    current.push(getPublicStorageUrl(attachment.storage_path));
-    attachmentsByTask.set(attachment.task_id, current);
+    if (attachment.kind === "EXTRA") {
+      const current = extrasByTask.get(attachment.task_id) ?? [];
+      current.push(getPublicStorageUrl(attachment.storage_path));
+      extrasByTask.set(attachment.task_id, current);
+    } else if (attachment.kind === "BEFORE") {
+      beforeByTask.set(attachment.task_id, getPublicStorageUrl(attachment.storage_path));
+    } else if (attachment.kind === "AFTER") {
+      afterByTask.set(attachment.task_id, getPublicStorageUrl(attachment.storage_path));
+    }
   }
 
-  return tasks.map((task) => ({
-    ...task,
-    extraPhotos: attachmentsByTask.get(task.id) ?? [],
-  }));
+  return tasks.map((task) => {
+    const beforePhoto = beforeByTask.get(task.id) ?? task.photo;
+    return {
+      ...task,
+      extraPhotos: extrasByTask.get(task.id) ?? task.extraPhotos ?? [],
+      beforePhoto,
+      afterPhoto: afterByTask.get(task.id) ?? task.afterPhoto,
+    };
+  });
 }
 
 function taskToRow(task: Task, photoPath: string | null): TaskRow {
@@ -307,6 +319,60 @@ async function uploadExtraPhotos(task: Task): Promise<AttachmentRow[]> {
   return uploaded;
 }
 
+type BeforeAfterResult = {
+  attachments: AttachmentRow[];
+  beforeStoragePath?: string;
+  afterStoragePath?: string;
+};
+
+async function uploadBeforeAfterPhotos(task: Task, actorId: string): Promise<BeforeAfterResult> {
+  const nowAt = task.updatedAt.replace(/[:.]/g, "-");
+  const supabase = getSupabaseBrowserClient();
+  const out: BeforeAfterResult = { attachments: [] };
+
+  async function uploadOne(
+    dataUrl: string,
+    kind: Exclude<TaskAttachmentKind, "PRIMARY" | "EXTRA">,
+  ): Promise<AttachmentRow> {
+    const extension = getFileExtensionFromDataUrl(dataUrl);
+    const slug = kind.toLowerCase();
+    const filePath = `tasks/${task.id}/${slug}-${nowAt}.${extension}`;
+    const blob = dataUrlToBlob(dataUrl);
+    const upload = await supabase.storage
+      .from(SUPABASE_STORAGE_BUCKET)
+      .upload(filePath, blob, {
+        cacheControl: "3600",
+        contentType: blob.type,
+        upsert: true,
+      });
+    if (upload.error) throw upload.error;
+    return {
+      id: nanoid(),
+      task_id: task.id,
+      uploaded_by_id: actorId,
+      storage_path: filePath,
+      file_name: `${slug}.${extension}`,
+      mime_type: blob.type,
+      kind,
+      created_at: new Date().toISOString(),
+    };
+  }
+
+  if (task.beforePhoto && task.beforePhoto.startsWith("data:")) {
+    const row = await uploadOne(task.beforePhoto, "BEFORE");
+    out.attachments.push(row);
+    out.beforeStoragePath = row.storage_path;
+  }
+
+  if (task.afterPhoto && task.afterPhoto.startsWith("data:")) {
+    const row = await uploadOne(task.afterPhoto, "AFTER");
+    out.attachments.push(row);
+    out.afterStoragePath = row.storage_path;
+  }
+
+  return out;
+}
+
 export async function upsertTaskBundleToSupabase(input: {
   task: Task;
   comments: Comment[];
@@ -319,10 +385,15 @@ export async function upsertTaskBundleToSupabase(input: {
   const supabase = getSupabaseBrowserClient();
   const photoPath = await uploadTaskPhoto(input.task);
   const extraAttachments = await uploadExtraPhotos(input.task);
+  const syncActorId = input.task.assigneeId ?? input.task.createdById;
+  const baResult = await uploadBeforeAfterPhotos(input.task, syncActorId);
+  const beforeAfterAttachments = baResult.attachments;
   const taskRow = taskToRow(
     {
       ...input.task,
       photoPath: photoPath ?? input.task.photoPath,
+      beforePhotoPath: baResult.beforeStoragePath ?? input.task.beforePhotoPath,
+      afterPhotoPath: baResult.afterStoragePath ?? input.task.afterPhotoPath,
       syncedAt: new Date().toISOString(),
     },
     photoPath ?? input.task.photoPath ?? null,
@@ -359,10 +430,11 @@ export async function upsertTaskBundleToSupabase(input: {
     }
   }
 
-  if (extraAttachments.length > 0) {
+  const allAttachments = [...extraAttachments, ...beforeAfterAttachments];
+  if (allAttachments.length > 0) {
     const attachmentsResult = await supabase
       .from("task_attachments")
-      .upsert(extraAttachments);
+      .upsert(allAttachments);
     if (attachmentsResult.error) {
       throw attachmentsResult.error;
     }
@@ -371,6 +443,8 @@ export async function upsertTaskBundleToSupabase(input: {
   return {
     taskId: input.task.id,
     photoPath: photoPath ?? input.task.photoPath ?? null,
+    beforePhotoPath: baResult.beforeStoragePath ?? input.task.beforePhotoPath,
+    afterPhotoPath: baResult.afterStoragePath ?? input.task.afterPhotoPath,
   };
 }
 

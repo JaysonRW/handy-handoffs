@@ -26,6 +26,7 @@ import { Route as CleanerSyncRouteImport } from './routes/cleaner.sync'
 import { Route as CaretakerTasksRouteImport } from './routes/caretaker.tasks'
 import { Route as CaretakerSyncRouteImport } from './routes/caretaker.sync'
 import { Route as CaretakerNewRouteImport } from './routes/caretaker.new'
+import { Route as CaretakerChecklistRouteImport } from './routes/caretaker.checklist'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminSyncRouteImport } from './routes/admin.sync'
@@ -126,6 +127,11 @@ const CaretakerNewRoute = CaretakerNewRouteImport.update({
   path: '/new',
   getParentRoute: () => CaretakerRoute,
 } as any)
+const CaretakerChecklistRoute = CaretakerChecklistRouteImport.update({
+  id: '/checklist',
+  path: '/checklist',
+  getParentRoute: () => CaretakerRoute,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/caretaker/checklist': typeof CaretakerChecklistRoute
   '/caretaker/new': typeof CaretakerNewRoute
   '/caretaker/sync': typeof CaretakerSyncRoute
   '/caretaker/tasks': typeof CaretakerTasksRouteWithChildren
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/caretaker/checklist': typeof CaretakerChecklistRoute
   '/caretaker/new': typeof CaretakerNewRoute
   '/caretaker/sync': typeof CaretakerSyncRoute
   '/caretaker/tasks': typeof CaretakerTasksRouteWithChildren
@@ -271,6 +279,7 @@ export interface FileRoutesById {
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
+  '/caretaker/checklist': typeof CaretakerChecklistRoute
   '/caretaker/new': typeof CaretakerNewRoute
   '/caretaker/sync': typeof CaretakerSyncRoute
   '/caretaker/tasks': typeof CaretakerTasksRouteWithChildren
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
+    | '/caretaker/checklist'
     | '/caretaker/new'
     | '/caretaker/sync'
     | '/caretaker/tasks'
@@ -335,6 +345,7 @@ export interface FileRouteTypes {
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
+    | '/caretaker/checklist'
     | '/caretaker/new'
     | '/caretaker/sync'
     | '/caretaker/tasks'
@@ -367,6 +378,7 @@ export interface FileRouteTypes {
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
+    | '/caretaker/checklist'
     | '/caretaker/new'
     | '/caretaker/sync'
     | '/caretaker/tasks'
@@ -520,6 +532,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CaretakerNewRouteImport
       parentRoute: typeof CaretakerRoute
     }
+    '/caretaker/checklist': {
+      id: '/caretaker/checklist'
+      path: '/checklist'
+      fullPath: '/caretaker/checklist'
+      preLoaderRoute: typeof CaretakerChecklistRouteImport
+      parentRoute: typeof CaretakerRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -668,6 +687,7 @@ const CaretakerTasksRouteWithChildren = CaretakerTasksRoute._addFileChildren(
 )
 
 interface CaretakerRouteChildren {
+  CaretakerChecklistRoute: typeof CaretakerChecklistRoute
   CaretakerNewRoute: typeof CaretakerNewRoute
   CaretakerSyncRoute: typeof CaretakerSyncRoute
   CaretakerTasksRoute: typeof CaretakerTasksRouteWithChildren
@@ -675,6 +695,7 @@ interface CaretakerRouteChildren {
 }
 
 const CaretakerRouteChildren: CaretakerRouteChildren = {
+  CaretakerChecklistRoute: CaretakerChecklistRoute,
   CaretakerNewRoute: CaretakerNewRoute,
   CaretakerSyncRoute: CaretakerSyncRoute,
   CaretakerTasksRoute: CaretakerTasksRouteWithChildren,

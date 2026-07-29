@@ -5,15 +5,22 @@ import {
   fetchTaskSnapshotFromSupabase,
   upsertTaskBundleToSupabase,
 } from "@/features/tasks/supabase";
+import { useChecklistStore } from "@/features/checklist/store";
+import {
+  fetchChecklistSnapshot,
+  upsertChecklistCompletion,
+} from "@/features/checklist/supabase";
 import { isSupabaseConfigured, supabaseEnvStatus } from "@/lib/supabase/client";
 
 type SyncRunResult = {
   syncedIds: string[];
   failed: Array<{ taskId: string; message: string }>;
   skippedReason?: string;
+  checklistSynced: number;
+  checklistFailed: number;
 };
 
-async function hydrateFromServer(reason: "boot" | "poll" | "after-sync") {
+async function hydrateTasksFromServer(reason: "boot" | "poll" | "after-sync") {
   const { pushDebugEvent } = useSyncStore.getState();
 
   try {
@@ -32,10 +39,59 @@ async function hydrateFromServer(reason: "boot" | "poll" | "after-sync") {
     pushDebugEvent({
       scope: "runtime",
       status: "error",
-      message: `[DEBUG] ${reason} hydrate failed: ${message}`,
+      message: `[DEBUG] ${reason} hydrate tasks failed: ${message}`,
     });
     return false;
   }
+}
+
+async function hydrateChecklistFromServer(reason: "boot" | "poll" | "after-sync") {
+  const { pushDebugEvent } = useSyncStore.getState();
+  const checklistStore = useChecklistStore.getState();
+  try {
+    const snapshot = await fetchChecklistSnapshot();
+    if (!snapshot) {
+      if (reason === "boot") {
+        checklistStore.setLastError(
+          "No checklist items returned. Apply the SQL seed and check RLS policies on checklist_items / checklist_completions.",
+        );
+      }
+      return false;
+    }
+    pushDebugEvent({
+      scope: "runtime",
+      status: "success",
+      message: `[DEBUG] Applied ${reason} checklist snapshot with ${snapshot.items.length} item(s)`,
+    });
+    checklistStore.hydrateFromServer(snapshot);
+    checklistStore.setLastError(undefined);
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    pushDebugEvent({
+      scope: "runtime",
+      status: "error",
+      message: `[DEBUG] ${reason} hydrate checklist failed: ${message}`,
+    });
+    checklistStore.setLastError(message);
+    return false;
+  }
+}
+
+async function hydrateFromServer(reason: "boot" | "poll" | "after-sync") {
+  const [tasksOk, checklistOk] = await Promise.all([
+    hydrateTasksFromServer(reason),
+    hydrateChecklistFromServer(reason),
+  ]);
+  return tasksOk || checklistOk;
+}
+
+export async function hydrateFromSupabase(): Promise<boolean> {
+  return hydrateFromServer("manual");
+}
+
+export async function hydrateChecklistFromSupabase(): Promise<boolean> {
+  return hydrateChecklistFromServer("manual");
 }
 
 function getTasksForSync(taskIds?: string[]) {
@@ -48,13 +104,35 @@ function getTasksForSync(taskIds?: string[]) {
   return state.tasks.filter((task) => ids.has(task.id));
 }
 
+async function syncChecklist(trigger: "auto" | "manual") {
+  const checklistStore = useChecklistStore.getState();
+  const pending = checklistStore.getPendingUpserts();
+  if (pending.length === 0) return { synced: 0, failed: 0 };
+  if (!isSupabaseConfigured) return { synced: 0, failed: pending.length };
+
+  let synced = 0;
+  let failed = 0;
+  for (const p of pending) {
+    try {
+      const completion = await upsertChecklistCompletion(p.completion);
+      checklistStore.markUpsertDone(p.key, completion);
+      synced += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      checklistStore.markUpsertFailed(p.key, message);
+      failed += 1;
+    }
+  }
+  return { synced, failed };
+}
+
 export async function syncTasks(taskIds?: string[], trigger: "auto" | "manual" | "submit" | "task" = "manual"): Promise<SyncRunResult> {
   const syncStore = useSyncStore.getState();
   const tasks = getTasksForSync(taskIds);
 
   if (syncStore.syncing) {
     const skippedReason = "Ja existe uma sincronizacao em andamento.";
-    return { syncedIds: [], failed: [], skippedReason };
+    return { syncedIds: [], failed: [], skippedReason, checklistSynced: 0, checklistFailed: 0 };
   }
 
   if (!syncStore.online) {
@@ -68,7 +146,7 @@ export async function syncTasks(taskIds?: string[], trigger: "auto" | "manual" |
         message: skippedReason,
       },
     });
-    return { syncedIds: [], failed: [], skippedReason };
+    return { syncedIds: [], failed: [], skippedReason, checklistSynced: 0, checklistFailed: 0 };
   }
 
   if (!isSupabaseConfigured) {
@@ -94,10 +172,12 @@ export async function syncTasks(taskIds?: string[], trigger: "auto" | "manual" |
       syncedIds: [],
       failed: tasks.map((task) => ({ taskId: task.id, message: skippedReason })),
       skippedReason,
+      checklistSynced: 0,
+      checklistFailed: 0,
     };
   }
 
-  if (tasks.length === 0) {
+  if (tasks.length === 0 && !(!taskIds || taskIds.length === 0 ? useChecklistStore.getState().getPendingUpserts().length : false)) {
     const skippedReason = "Nenhuma task elegivel para sincronizacao.";
     syncStore.patchDebug({
       lastPush: {
@@ -108,7 +188,8 @@ export async function syncTasks(taskIds?: string[], trigger: "auto" | "manual" |
         message: skippedReason,
       },
     });
-    return { syncedIds: [], failed: [], skippedReason };
+    const { synced, failed } = await syncChecklist(trigger === "task" ? "manual" : (trigger === "auto" ? "auto" : "manual"));
+    return { syncedIds: [], failed: [], skippedReason, checklistSynced: synced, checklistFailed: failed };
   }
 
   syncStore.setSyncing(true);
@@ -130,6 +211,8 @@ export async function syncTasks(taskIds?: string[], trigger: "auto" | "manual" |
   const syncedIds: string[] = [];
   const failed: Array<{ taskId: string; message: string }> = [];
   const state = useTasksStore.getState();
+  let checklistSynced = 0;
+  let checklistFailed = 0;
 
   try {
     for (const task of tasks) {
@@ -156,9 +239,15 @@ export async function syncTasks(taskIds?: string[], trigger: "auto" | "manual" |
       }
     }
 
+    const { synced, failed: cFailed } = await syncChecklist(trigger === "task" ? "manual" : (trigger === "auto" ? "auto" : "manual"));
+    checklistSynced = synced;
+    checklistFailed = cFailed;
+
     if (syncedIds.length > 0) {
       useTasksStore.getState().markSynced(syncedIds);
       syncStore.recordSync(syncedIds.length, trigger);
+      await hydrateFromServer("after-sync");
+    } else if (checklistSynced > 0) {
       await hydrateFromServer("after-sync");
     }
 
@@ -166,32 +255,28 @@ export async function syncTasks(taskIds?: string[], trigger: "auto" | "manual" |
       lastPush: {
         at: new Date().toISOString(),
         trigger,
-        status: failed.length > 0 ? "error" : "success",
+        status: failed.length > 0 || checklistFailed > 0 ? "error" : "success",
         pendingCount: tasks.length,
         syncedCount: syncedIds.length,
         message:
-          failed.length > 0
-            ? `${syncedIds.length} task(s) sincronizadas e ${failed.length} falharam.`
-            : `${syncedIds.length} task(s) sincronizadas com sucesso.`,
+          failed.length > 0 || checklistFailed > 0
+            ? `${syncedIds.length} task(s) sincronizadas e ${failed.length} falharam. Checklist: +${checklistSynced}/-${checklistFailed}`
+            : `${syncedIds.length} task(s) + ${checklistSynced} checklist sincronizadas com sucesso.`,
       },
     });
     syncStore.pushDebugEvent({
       scope: "runtime",
-      status: failed.length > 0 ? "error" : "success",
+      status: failed.length > 0 || checklistFailed > 0 ? "error" : "success",
       message:
-        failed.length > 0
-          ? `[DEBUG] Sync finished with ${syncedIds.length} success(es) and ${failed.length} failure(s)`
-          : `[DEBUG] Sync finished successfully for ${syncedIds.length} task(s)`,
+        failed.length > 0 || checklistFailed > 0
+          ? `[DEBUG] Sync finished with tasks ${syncedIds.length}s/${failed.length}f and checklist ${checklistSynced}s/${checklistFailed}f`
+          : `[DEBUG] Sync finished successfully for ${syncedIds.length} task(s) + ${checklistSynced} checklist item(s)`,
     });
 
-    return { syncedIds, failed };
+    return { syncedIds, failed, checklistSynced, checklistFailed };
   } finally {
     syncStore.setSyncing(false);
   }
-}
-
-export async function hydrateFromSupabase(): Promise<boolean> {
-  return hydrateFromServer("manual");
 }
 
 export function useSyncRuntime() {
@@ -213,7 +298,6 @@ export function useSyncRuntime() {
   }, [setOnline]);
 
   useEffect(() => {
-    // #region debug-point B:runtime-config
     patchDebug({
       supabaseConfigured: isSupabaseConfigured,
       hasSupabaseUrl: supabaseEnvStatus.hasSupabaseUrl,
@@ -224,7 +308,6 @@ export function useSyncRuntime() {
       status: "info",
       message: `[DEBUG] Sync runtime booted; online=${online}; configured=${isSupabaseConfigured}`,
     });
-    // #endregion
   }, [online, patchDebug, pushDebugEvent]);
 
   useEffect(() => {
@@ -246,8 +329,9 @@ export function useSyncRuntime() {
 
   useEffect(() => {
     if (!online) return;
-    const pending = selectPendingSync(useTasksStore.getState());
-    if (pending.length === 0) return;
+    const pendingTasks = selectPendingSync(useTasksStore.getState()).length;
+    const pendingChecklist = useChecklistStore.getState().getPendingUpserts().length;
+    if (pendingTasks === 0 && pendingChecklist === 0) return;
     void syncTasks(undefined, "auto");
   }, [online]);
 }

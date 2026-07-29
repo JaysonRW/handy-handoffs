@@ -1,6 +1,6 @@
 import { Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { ArrowRight, CheckCircle2, CloudOff, Inbox, ListChecks, Plus } from "lucide-react";
+import { ArrowRight, CheckSquare2, CloudOff, ListChecks, Plus } from "lucide-react";
 import { StaffShell } from "@/components/layout/StaffShell";
 import {
   canCreateTaskFromStaffPortal,
@@ -15,6 +15,8 @@ import { TaskForm } from "@/features/tasks/components/TaskForm";
 import { selectVisibleForStaff, useTasksStore } from "@/features/tasks/store";
 import { simulateOffline, triggerManualSync } from "@/features/sync/runtime";
 import { useSyncStore } from "@/features/sync/store";
+import { useChecklistStore } from "@/features/checklist/store";
+import { ChecklistView } from "@/features/checklist/components/ChecklistView";
 import { format, formatDistanceToNow } from "date-fns";
 import { RefreshCw, Wifi, WifiOff } from "lucide-react";
 
@@ -22,6 +24,19 @@ type FixedPortalProps = {
   userId: string;
   basePath: string;
 };
+
+function checklistExtraTabsFor(userId: string, basePath: string) {
+  const user = getUser(userId);
+  if (!user || user.role !== "CARETAKER") return undefined;
+  return [
+    {
+      to: `${basePath}/checklist`,
+      label: "Checklist",
+      icon: CheckSquare2,
+      exact: true,
+    },
+  ];
+}
 
 export function FixedStaffHome({ userId, basePath }: FixedPortalProps) {
   const user = getUser(userId)!;
@@ -31,22 +46,19 @@ export function FixedStaffHome({ userId, basePath }: FixedPortalProps) {
     [allTasks, userId],
   );
   const canCreate = canCreateTaskFromStaffPortal(user.role);
-  const canSeeCreated = canSeeCreatedTasks(user.role);
-  const newQ = tasks.filter((t) => t.status === "NEW");
-  const done = tasks.filter((t) => t.status === "DONE");
-  const pendingSync = tasks.filter((t) => !t.synced);
-
-  const doing = tasks.filter((t) => t.status === "DOING");
-  const myActive = tasks
-    .filter((t) => t.assigneeId === userId && t.status !== "DONE")
+  const myActive = tasks.filter((t) => t.assigneeId === userId && t.status !== "DONE");
   const isCleanerPortal = user.role === "CLEANER";
+  const isCaretakerPortal = user.role === "CARETAKER";
+  const checklistDone = useChecklistStore((s) => s.getProgress().done);
+  const checklistTotal = useChecklistStore((s) => s.getProgress().total);
 
   return (
     <StaffShell
       userId={userId}
       title={`Hi, ${user.name.split(" ")[0]}`}
-      subtitle={user.role === "CARETAKER" ? "Caretaker dashboard" : "Cleaner dashboard"}
+      subtitle={isCaretakerPortal ? "Caretaker dashboard" : "Cleaner dashboard"}
       portalBasePath={basePath}
+      extraTabs={checklistExtraTabsFor(userId, basePath)}
     >
       <div className="max-w-3xl mx-auto px-4 pt-4 pb-4 flex flex-col gap-4">
         {canCreate && (
@@ -67,32 +79,35 @@ export function FixedStaffHome({ userId, basePath }: FixedPortalProps) {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <Mini label="My active" value={doing.filter((t) => t.assigneeId === userId).length} icon={ListChecks} />
-          {!isCleanerPortal && (
-            <>
-              <Mini
-                label={canSeeCreated ? "In review" : "New assigned"}
-                value={canSeeCreated ? newQ.filter((t) => t.createdById === userId).length : newQ.length}
-                icon={Inbox}
-              />
-              <Mini label="Completed" value={done.length} icon={CheckCircle2} />
-              <Mini
-                label="Pending sync"
-                value={pendingSync.length}
-                icon={CloudOff}
-                tone="accent"
-              />
-            </>
+          <Mini
+            label="My active"
+            value={myActive.length}
+            icon={ListChecks}
+            href={`${basePath}/tasks`}
+          />
+          {isCaretakerPortal && (
+            <Mini
+              label="Checklist"
+              value={checklistDone}
+              subValue={`/ ${checklistTotal}`}
+              icon={CheckSquare2}
+              href={`${basePath}/checklist`}
+              tone="accent"
+            />
           )}
         </div>
 
         <section>
           <header className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-bold">My active tasks</h2>
-            <Link to={`${basePath}/tasks` as any} className="text-xs font-semibold text-primary">View all →</Link>
+            <Link to={`${basePath}/tasks` as any} className="text-xs font-semibold text-primary">
+              View all →
+            </Link>
           </header>
           {myActive.length === 0 ? (
-            <div className="surface-card p-8 text-center text-sm text-muted-foreground">No active tasks. Nice work.</div>
+            <div className="surface-card p-8 text-center text-sm text-muted-foreground">
+              No active tasks. Nice work.
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {myActive.map((t) => (
@@ -115,7 +130,10 @@ export function FixedStaffHome({ userId, basePath }: FixedPortalProps) {
 export function FixedStaffTasks({ userId, basePath }: FixedPortalProps) {
   const user = getUser(userId)!;
   const allTasks = useTasksStore((s) => s.tasks);
-  const visibleTasks = useMemo(() => selectVisibleForStaff(userId)({ tasks: allTasks } as any), [allTasks, userId]);
+  const visibleTasks = useMemo(
+    () => selectVisibleForStaff(userId)({ tasks: allTasks } as any),
+    [allTasks, userId],
+  );
   const tasks = useMemo(() => {
     if (user.role === "CLEANER") {
       return visibleTasks.filter((t) => t.status !== "DONE");
@@ -129,9 +147,12 @@ export function FixedStaffTasks({ userId, basePath }: FixedPortalProps) {
     <StaffShell
       userId={userId}
       title="My tasks"
-      subtitle={`${filtered.length} ${user.role === "CLEANER" ? "pending" : `of ${visibleTasks.length}`} · ${user.role.toLowerCase()}`}
+      subtitle={`${filtered.length} ${
+        user.role === "CLEANER" ? "pending" : `of ${visibleTasks.length}`
+      } · ${user.role.toLowerCase()}`}
       actions={<SyncNowButton taskIds={visibleTasks.map((task) => task.id)} />}
       portalBasePath={basePath}
+      extraTabs={checklistExtraTabsFor(userId, basePath)}
     >
       <div className="max-w-3xl mx-auto px-4 pt-4 flex flex-col gap-3">
         {user.role !== "CLEANER" && (
@@ -139,7 +160,9 @@ export function FixedStaffTasks({ userId, basePath }: FixedPortalProps) {
         )}
         {filtered.length === 0 ? (
           <div className="surface-card p-8 text-center text-sm text-muted-foreground">
-            {user.role === "CLEANER" ? "No pending tasks. All caught up." : "No tasks match these filters."}
+            {user.role === "CLEANER"
+              ? "No pending tasks. All caught up."
+              : "No tasks match these filters."}
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -176,6 +199,7 @@ export function FixedStaffNew({ userId, basePath }: FixedPortalProps) {
       actions={<SyncNowButton taskIds={visibleTasks.map((task) => task.id)} />}
       backTo={`${basePath}/tasks`}
       portalBasePath={basePath}
+      extraTabs={checklistExtraTabsFor(userId, basePath)}
     >
       <TaskForm creatorId={userId} redirectTo={`${basePath}/tasks/{id}`} />
     </StaffShell>
@@ -204,16 +228,17 @@ export function FixedStaffTaskDetail({
   const task = visibleTasks.find((item) => item.id === taskId);
   if (!task) throw notFound();
 
-  const onCleanerCompleted = user.role === "CLEANER"
-    ? () => {
-        const remaining = cleanerActiveTasks.filter((t) => t.id !== taskId);
-        if (remaining.length > 0) {
-          navigate({ to: `${basePath}/tasks/${remaining[0]!.id}` as any });
-        } else {
-          navigate({ to: `${basePath}/tasks` as any });
+  const onCleanerCompleted =
+    user.role === "CLEANER"
+      ? () => {
+          const remaining = cleanerActiveTasks.filter((t) => t.id !== taskId);
+          if (remaining.length > 0) {
+            navigate({ to: `${basePath}/tasks/${remaining[0]!.id}` as any });
+          } else {
+            navigate({ to: `${basePath}/tasks` as any });
+          }
         }
-      }
-    : undefined;
+      : undefined;
 
   return (
     <StaffShell
@@ -223,6 +248,7 @@ export function FixedStaffTaskDetail({
       actions={<SyncNowButton taskIds={visibleTasks.map((item) => item.id)} />}
       backTo={`${basePath}/tasks`}
       portalBasePath={basePath}
+      extraTabs={checklistExtraTabsFor(userId, basePath)}
     >
       <TaskDetail
         task={task}
@@ -236,14 +262,35 @@ export function FixedStaffTaskDetail({
   );
 }
 
+export function FixedStaffChecklist({ userId, basePath }: FixedPortalProps) {
+  const user = getUser(userId);
+  if (!user || user.role !== "CARETAKER") throw notFound();
+  return (
+    <StaffShell
+      userId={userId}
+      title="Checklist"
+      subtitle="Daily &amp; weekly operational checks"
+      portalBasePath={basePath}
+      extraTabs={checklistExtraTabsFor(userId, basePath)}
+      backTo={`${basePath}`}
+    >
+      <ChecklistView userId={userId} basePath={basePath} />
+    </StaffShell>
+  );
+}
+
 export function FixedStaffSync({ userId, basePath }: FixedPortalProps) {
   const user = getUser(userId)!;
   const online = useSyncStore((s) => s.online);
   const syncing = useSyncStore((s) => s.syncing);
   const history = useSyncStore((s) => s.history);
   const allTasks = useTasksStore((s) => s.tasks);
-  const myTasks = useMemo(() => selectVisibleForStaff(userId)({ tasks: allTasks } as any), [allTasks, userId]);
-  const pending = myTasks.filter((t) => !t.synced);
+  const myTasks = useMemo(
+    () => selectVisibleForStaff(userId)({ tasks: allTasks } as any),
+    [allTasks, userId],
+  );
+  const pending = useMemo(() => myTasks.filter((t) => !t.synced), [myTasks]);
+  const checklistPending = useChecklistStore((s) => s.pendingUpserts.length);
 
   return (
     <StaffShell
@@ -251,16 +298,22 @@ export function FixedStaffSync({ userId, basePath }: FixedPortalProps) {
       title="Sync status"
       subtitle={online ? "Connected" : "Offline — queueing locally"}
       portalBasePath={basePath}
+      extraTabs={checklistExtraTabsFor(userId, basePath)}
     >
       <div className="max-w-3xl mx-auto px-4 py-4 flex flex-col gap-4">
-        <div className="surface-card p-4 flex items-center justify-between gap-3">
+        <div className="surface-card p-4 flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="text-sm font-bold inline-flex items-center gap-2">
-              {online ? <Wifi className="size-4 text-success" /> : <WifiOff className="size-4 text-primary" />}
+              {online ? (
+                <Wifi className="size-4 text-success" />
+              ) : (
+                <WifiOff className="size-4 text-primary" />
+              )}
               {online ? "Online" : "Offline"}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {pending.length} {canSeeCreatedTasks(user.role) ? "visible tasks" : "assigned tasks"} waiting to sync
+              {pending.length} {canSeeCreatedTasks(user.role) ? "visible tasks" : "assigned tasks"} waiting
+              {checklistPending > 0 ? ` · ${checklistPending} checklist` : null}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -272,7 +325,7 @@ export function FixedStaffSync({ userId, basePath }: FixedPortalProps) {
             </button>
             <button
               onClick={() => triggerManualSync(pending.map((task) => task.id))}
-              disabled={!online || pending.length === 0 || syncing}
+              disabled={!online || (pending.length === 0 && checklistPending === 0) || syncing}
               className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold focus-ring inline-flex items-center gap-1.5 disabled:opacity-40"
             >
               <RefreshCw className={`size-3.5 ${syncing ? "animate-spin" : ""}`} /> Sync now
@@ -282,17 +335,30 @@ export function FixedStaffSync({ userId, basePath }: FixedPortalProps) {
 
         <section className="surface-card p-4">
           <h2 className="text-sm font-bold mb-2">Pending sync</h2>
-          {pending.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-3">All your tasks are synced.</p>
+          {pending.length === 0 && checklistPending === 0 ? (
+            <p className="text-xs text-muted-foreground py-3">
+              All your tasks and checklist checks are synced.
+            </p>
           ) : (
             <ul className="divide-y divide-border">
               {pending.map((t) => (
                 <li key={t.id} className="py-2 flex items-center gap-2 text-sm">
                   <CloudOff className="size-4 text-primary" />
                   <span className="flex-1 truncate">{t.title}</span>
-                  <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(t.createdAt), { addSuffix: true })}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(t.createdAt), { addSuffix: true })}
+                  </span>
                 </li>
               ))}
+              {checklistPending > 0 && (
+                <li key="checklist-pending" className="py-2 flex items-center gap-2 text-sm">
+                  <CheckSquare2 className="size-4 text-warning" />
+                  <span className="flex-1 truncate">
+                    {checklistPending} checklist check{checklistPending > 1 ? "s" : ""}
+                  </span>
+                  <span className="text-xs text-muted-foreground">pending</span>
+                </li>
+              )}
             </ul>
           )}
         </section>
@@ -304,9 +370,17 @@ export function FixedStaffSync({ userId, basePath }: FixedPortalProps) {
           ) : (
             <ol className="flex flex-col gap-1.5">
               {history.slice(0, 20).map((h) => (
-                <li key={h.id} className="text-xs flex items-center justify-between border-b border-border pb-1.5 last:border-0">
-                  <span><span className="font-semibold">{h.count}</span> task{h.count !== 1 && "s"} synced ({h.trigger})</span>
-                  <span className="text-muted-foreground">{format(new Date(h.at), "MMM d, HH:mm")}</span>
+                <li
+                  key={h.id}
+                  className="text-xs flex items-center justify-between border-b border-border pb-1.5 last:border-0"
+                >
+                  <span>
+                    <span className="font-semibold">{h.count}</span> task{h.count !== 1 && "s"} synced
+                    ({h.trigger})
+                  </span>
+                  <span className="text-muted-foreground">
+                    {format(new Date(h.at), "MMM d, HH:mm")}
+                  </span>
                 </li>
               ))}
             </ol>
@@ -317,12 +391,41 @@ export function FixedStaffSync({ userId, basePath }: FixedPortalProps) {
   );
 }
 
-function Mini({ label, value, icon: Icon, tone }: { label: string; value: number; icon: any; tone?: "accent" }) {
-  return (
-    <div className="surface-card p-3 flex flex-col gap-1">
+function Mini({
+  label,
+  value,
+  subValue,
+  icon: Icon,
+  tone,
+  href,
+}: {
+  label: string;
+  value: number;
+  subValue?: string;
+  icon: any;
+  tone?: "accent";
+  href?: string;
+}) {
+  const content = (
+    <div
+      className={`surface-card p-3 flex flex-col gap-1 ${
+        href ? "hover:border-primary/50 cursor-pointer transition" : ""
+      }`}
+    >
       <Icon className={`size-4 ${tone === "accent" ? "text-warning" : "text-primary"}`} />
-      <div className="text-2xl font-black tabular-nums leading-tight">{value}</div>
+      <div className="text-2xl font-black tabular-nums leading-tight inline-flex items-baseline gap-1">
+        {value}
+        {subValue && <span className="text-xs text-muted-foreground font-semibold">{subValue}</span>}
+      </div>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
     </div>
   );
+  if (href) {
+    return (
+      <Link to={href as any} className="focus-ring rounded-md">
+        {content}
+      </Link>
+    );
+  }
+  return content;
 }

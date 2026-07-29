@@ -1,14 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, CloudOff, Inbox, ListChecks, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ArrowRight, CloudOff, Inbox, CheckCircle2, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { useTasksStore } from "@/features/tasks/store";
 import { SyncIndicator } from "@/features/sync/SyncIndicator";
 import { PriorityBadge } from "@/features/tasks/components/PriorityBadge";
 import { StatusBadge } from "@/features/tasks/components/StatusBadge";
-import { Avatar } from "@/features/users/Avatar";
 import { getBlock, getFlatLabel } from "@/features/blocks/data";
-import { USERS } from "@/features/users/data";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({ meta: [{ title: "Overview · PMTMS Admin" }] }),
@@ -17,28 +15,28 @@ export const Route = createFileRoute("/admin/")({
 
 function AdminOverview() {
   const tasks = useTasksStore((s) => s.tasks);
-  const activity = useTasksStore((s) => s.activity);
-  const pending = tasks.filter((task) => !task.synced);
 
   const counts = {
     newQ: tasks.filter((t) => t.status === "NEW").length,
-    doing: tasks.filter((t) => t.status === "DOING").length,
     done: tasks.filter((t) => t.status === "DONE").length,
     p1: tasks.filter((t) => t.priority === "P1" && t.status !== "DONE").length,
+    p2: tasks.filter((t) => t.priority === "P2" && t.status !== "DONE").length,
+    p3: tasks.filter((t) => t.priority === "P3" && t.status !== "DONE").length,
   };
 
   const newest = tasks.filter((t) => t.status === "NEW").slice(0, 5);
 
   return (
     <AdminShell title="Operations overview" subtitle="Live status across all blocks" actions={<SyncIndicator />}>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Stat label="New (awaiting triage)" value={counts.newQ} icon={Inbox} tone="primary" href="/admin/tasks?status=NEW" />
-        <Stat label="In progress" value={counts.doing} icon={ListChecks} tone="accent" href="/admin/tasks?status=DOING" />
-        <Stat label="Completed" value={counts.done} icon={CheckCircle2} tone="success" href="/admin/tasks?status=DONE" />
         <Stat label="P1 open" value={counts.p1} icon={AlertTriangle} tone="danger" href="/admin/tasks?priority=P1" />
+        <Stat label="P2 open" value={counts.p2} icon={AlertTriangle} tone="accent" href="/admin/tasks?priority=P2" />
+        <Stat label="P3 open" value={counts.p3} icon={AlertTriangle} tone="primary" href="/admin/tasks?priority=P3" />
+        <Stat label="Completed" value={counts.done} icon={CheckCircle2} tone="success" href="/admin/tasks?status=DONE" />
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="mt-8">
         <section className="surface-card p-5">
           <header className="flex items-center justify-between mb-3">
             <div>
@@ -80,36 +78,6 @@ function AdminOverview() {
             </ul>
           )}
         </section>
-
-        <aside className="flex flex-col gap-4">
-          <div className="surface-card p-5">
-            <h3 className="text-sm font-bold">Pending sync</h3>
-            <p className="text-xs text-muted-foreground mt-1">Local tasks waiting for connectivity.</p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-3xl font-black tabular-nums">{pending.length}</span>
-              <Link to="/admin/sync" className="text-xs font-semibold text-primary inline-flex items-center gap-1">
-                Sync log <ArrowRight className="size-3.5" />
-              </Link>
-            </div>
-          </div>
-          <div className="surface-card p-5">
-            <h3 className="text-sm font-bold">Recent activity</h3>
-            <ol className="mt-3 flex flex-col gap-2.5">
-              {activity.slice(0, 8).map((a) => {
-                const u = USERS.find((x) => x.id === a.actorId);
-                return (
-                  <li key={a.id} className="flex gap-2.5 items-start">
-                    <Avatar userId={a.actorId} size={22} />
-                    <div className="min-w-0">
-                      <p className="text-xs"><span className="font-semibold">{u?.name ?? "System"}</span> · {a.message}</p>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}</p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        </aside>
       </div>
     </AdminShell>
   );

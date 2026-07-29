@@ -8,6 +8,7 @@ import type {
   Priority,
   Role,
   Task,
+  TaskAttachmentKind,
   TaskStatus,
 } from "./types";
 import { seedTasks } from "./seed";
@@ -31,6 +32,12 @@ interface TasksState {
   reopen: (taskId: string, actorId: string) => void;
   addComment: (taskId: string, text: string, actorId: string) => void;
   addPhoto: (taskId: string, dataUrl: string, actorId: string) => void;
+  setBeforeAfterPhoto: (
+    taskId: string,
+    kind: Extract<TaskAttachmentKind, "BEFORE" | "AFTER">,
+    dataUrl: string | null,
+    actorId: string,
+  ) => void;
   markSynced: (taskIds: string[]) => void;
   hydrateFromServer: (snapshot: {
     tasks: Task[];
@@ -196,6 +203,31 @@ export const useTasksStore = create<TasksState>()(
             message: "Photo added",
           }),
         })),
+
+      setBeforeAfterPhoto: (taskId, kind, dataUrl, actorId) =>
+        set((s) => {
+          const prop = kind === "BEFORE" ? "beforePhoto" : "afterPhoto";
+          const pathProp = kind === "BEFORE" ? "beforePhotoPath" : "afterPhotoPath";
+          return {
+            tasks: s.tasks.map((t) =>
+              t.id === taskId
+                ? markTaskPending(t, {
+                    [prop]: dataUrl,
+                    [pathProp]: dataUrl == null ? undefined : (t as any)[pathProp],
+                  } as any)
+                : t,
+            ),
+            activity: logActivity(s, {
+              taskId,
+              actorId,
+              type: "photo_added",
+              message: dataUrl
+                ? `${kind === "BEFORE" ? "Before" : "After"} photo uploaded`
+                : `${kind === "BEFORE" ? "Before" : "After"} photo removed`,
+              meta: { kind },
+            }),
+          };
+        }),
 
       markSynced: (taskIds) =>
         set((s) => {

@@ -51,6 +51,8 @@ export interface ActivityEntry {
   createdAt: string;
 }
 
+export type TaskAttachmentKind = "PRIMARY" | "EXTRA" | "BEFORE" | "AFTER";
+
 export interface Task {
   id: string;
   title: string;
@@ -58,6 +60,10 @@ export interface Task {
   photo?: string; // data URL
   photoPath?: string;
   extraPhotos?: string[];
+  beforePhoto?: string;
+  afterPhoto?: string;
+  beforePhotoPath?: string;
+  afterPhotoPath?: string;
   blockId: string;
   flatId: string;
   problemCategory?: ProblemCategory;

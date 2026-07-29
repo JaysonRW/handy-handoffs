@@ -1,11 +1,20 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Home, Plus, ListChecks, History, LogOut, CloudOff } from "lucide-react";
 import { Avatar } from "@/features/users/Avatar";
 import { canCreateTaskFromStaffPortal, getUser } from "@/features/users/data";
 import { SyncIndicator } from "@/features/sync/SyncIndicator";
 import { selectPendingSync, selectVisibleForStaff, useTasksStore } from "@/features/tasks/store";
+
+type ExtraTab = {
+  to: string;
+  label: string;
+  icon: typeof Home;
+  exact?: boolean;
+  badge?: number | undefined;
+  primary?: boolean;
+};
 
 export function StaffShell({
   userId,
@@ -16,15 +25,17 @@ export function StaffShell({
   backTo,
   portalBasePath,
   switchPortalTo = "/",
+  extraTabs = [],
 }: {
   userId: string;
-  children: React.ReactNode;
+  children: ReactNode;
   title: string;
   subtitle?: string;
-  actions?: React.ReactNode;
+  actions?: ReactNode;
   backTo?: string;
   portalBasePath?: string;
   switchPortalTo?: string;
+  extraTabs?: ExtraTab[];
 }) {
   const user = getUser(userId);
   const navigate = useNavigate();
@@ -41,12 +52,13 @@ export function StaffShell({
   );
 
   const homePath = portalBasePath ?? `/staff/${userId}`;
-  const tabs = [
+  const baseTabs: ExtraTab[] = [
     { to: homePath, label: "Home", icon: Home, exact: true },
-    { to: `${homePath}/tasks`, label: "Tasks", icon: ListChecks, badge: total },
-    ...(canCreate ? [{ to: `${homePath}/new`, label: "New", icon: Plus, primary: true }] : []),
+    { to: `${homePath}/tasks`, label: "Tasks", icon: ListChecks, badge: total || undefined },
+    ...(canCreate ? [{ to: `${homePath}/new`, label: "New", icon: Plus, primary: true as const }] : []),
     { to: `${homePath}/sync`, label: "Sync", icon: History, badge: pending || undefined },
   ];
+  const tabs = [...baseTabs, ...extraTabs];
   const showBack = pathname !== homePath;
 
   function handleBack() {
