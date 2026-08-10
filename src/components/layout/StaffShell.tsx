@@ -116,9 +116,9 @@ export function StaffShell({
         </div>
       </header>
 
-      <main className="flex-1 pb-24">{children}</main>
+      <main className="flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))]">{children}</main>
 
-      <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/90 backdrop-blur">
+      <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-background/90 backdrop-blur pb-[env(safe-area-inset-bottom)]">
         <div
           className="mx-auto max-w-3xl grid"
           style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}

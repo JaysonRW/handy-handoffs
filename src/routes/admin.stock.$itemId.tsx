@@ -42,7 +42,7 @@ function AdminStockItemDetail() {
   if (!item) throw notFound();
 
   return (
-    <AdminShell userId={ACTOR_ID}>
+    <AdminShell title={item.name} subtitle={`SKU · ${item.sku}`}>
       <div className="mx-auto max-w-6xl w-full space-y-5 px-4 py-6">
         <div className="flex items-center gap-2">
           <Link

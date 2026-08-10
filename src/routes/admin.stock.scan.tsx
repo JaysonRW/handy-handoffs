@@ -10,8 +10,18 @@ import {
   CheckCircle2,
   RotateCcw,
   SwitchCamera,
+  Info,
+  X,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   extractItemIdFromQr,
   useQrScanner,
@@ -25,7 +35,6 @@ export const Route = createFileRoute("/admin/stock/scan")({
   component: AdminStockScan,
 });
 
-const ACTOR_ID = "u_admin";
 const SCANNER_EL_ID = "pmtms-qr-reader-scan";
 
 function AdminStockScan() {
@@ -48,6 +57,7 @@ function AdminStockScan() {
   const [navigating, setNavigating] = useState(false);
   const [lastInvalid, setLastInvalid] = useState<string | null>(null);
   const [goNavigating, setGoNavigating] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   useEffect(() => {
     if (status !== "running") return;
@@ -136,7 +146,6 @@ function AdminStockScan() {
     const ev = { target: { value: deep } } as any;
     setGoNavigating(false);
     setTimeout(() => {
-      // Trigger via setDetected-like hook using our internal setter isn't exposed; use a manual navigate instead
       setNavigating(true);
       navigate({
         to: "/admin/stock/$itemId",
@@ -150,9 +159,23 @@ function AdminStockScan() {
   const canScan = isSupported && (status === "running" || status === "starting");
 
   return (
-    <AdminShell userId={ACTOR_ID} title="Scan QR" subtitle="Point the camera at a printed PMTMS stock sticker">
-      <div className="mx-auto max-w-3xl w-full px-4 py-8">
-        <div className="mb-5">
+    <AdminShell
+      title="Scan QR"
+      subtitle="Point camera at a printed PMTMS stock sticker"
+      actions={
+        <button
+          type="button"
+          className={buttonVariants({ variant: "secondary", size: "icon" })}
+          onClick={() => setInfoOpen(true)}
+          aria-label="Show scanner tips"
+          title="Tips & help"
+        >
+          <Info className="size-5" />
+        </button>
+      }
+    >
+      <div className="w-full -mx-4 sm:mx-0 px-0 sm:px-0 py-0 sm:py-6 min-h-[calc(100dvh-160px)] grid grid-rows-[auto_1fr_auto] gap-4">
+        <div className="px-4 sm:px-0 pt-3 sm:pt-0">
           <Link
             to="/admin/stock"
             className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
@@ -161,10 +184,10 @@ function AdminStockScan() {
           </Link>
         </div>
 
-        <div className="surface-card p-6 rounded-xl border-primary/25 relative overflow-hidden">
+        <div className="surface-card rounded-b-none sm:rounded-xl border-t sm:border border-primary/25 relative overflow-hidden px-4 py-5 sm:p-6">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-70" />
 
-          <div className="flex items-start gap-4 mb-5">
+          <div className="hidden sm:flex items-start gap-4 mb-5">
             <div className="size-14 grid place-items-center rounded-xl bg-primary/15 border border-primary/30 text-primary shrink-0">
               <ScanLine className="size-7" />
             </div>
@@ -179,7 +202,7 @@ function AdminStockScan() {
           <div className="relative mx-auto w-full max-w-md bg-black rounded-2xl overflow-hidden border border-border shadow-[0_20px_60px_-20px_rgba(0,0,0,0.4)]">
             <div
               id={SCANNER_EL_ID}
-              className="w-full aspect-square bg-surface-2/70"
+              className="w-full aspect-[4/5] sm:aspect-square bg-surface-2/70"
               aria-label="QR code camera scanner"
             />
 
@@ -219,37 +242,28 @@ function AdminStockScan() {
                     Click <span className="font-semibold">Start camera</span> below. On first visit,
                     browser will ask for permission.
                   </p>
-                  <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                    <Button
-                      variant="default"
-                      onClick={() => setGoNavigating(true)}
-                      disabled={!isSupported || navigating}
-                    >
-                      <Camera className="size-4" /> Start camera
-                    </Button>
-                  </div>
                 </div>
               </div>
             ) : null}
 
             {status === "running" ? (
               <div className="pointer-events-none absolute inset-0">
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[65%] max-w-[260px] rounded-xl border-2 border-dashed border-primary/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[72%] sm:size-[65%] max-w-[260px] rounded-xl border-2 border-dashed border-primary/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
                   <div className="absolute -top-0.5 -left-0.5 size-5 border-t-2 border-l-2 border-primary rounded-tl-md" />
                   <div className="absolute -top-0.5 -right-0.5 size-5 border-t-2 border-r-2 border-primary rounded-tr-md" />
                   <div className="absolute -bottom-0.5 -left-0.5 size-5 border-b-2 border-l-2 border-primary rounded-bl-md" />
                   <div className="absolute -bottom-0.5 -right-0.5 size-5 border-b-2 border-r-2 border-primary rounded-br-md" />
-                  <div className="absolute inset-x-4 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent animate-[scanline_2.2s_ease-in-out_infinite]" />
+                  <div className="absolute inset-x-4 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent animate-[scanlineMobile_2.2s_ease-in-out_infinite]" />
                 </div>
               </div>
             ) : null}
 
             <style>{`
-              @keyframes scanline {
+              @keyframes scanlineMobile {
                 0% { transform: translateY(0); opacity: 0.05; }
                 10% { opacity: 0.9; }
                 90% { opacity: 0.9; }
-                50% { transform: translateY(150px); }
+                50% { transform: translateY(180px); }
                 100% { transform: translateY(0); opacity: 0.05; }
               }
             `}</style>
@@ -279,7 +293,7 @@ function AdminStockScan() {
               className={buttonVariants({ variant: "ghost" })}
               onClick={simulateDemoItem}
             >
-              <CheckCircle2 className="size-4" /> Test with first item (demo)
+              <CheckCircle2 className="size-4" /> Test with first item
             </button>
           </div>
 
@@ -329,11 +343,23 @@ function AdminStockScan() {
               </div>
             </div>
           ) : null}
+        </div>
+      </div>
 
-          <div className="mt-6 grid gap-3 text-xs text-muted-foreground sm:grid-cols-3">
+      <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info className="size-5" /> Scanner tips &amp; help
+            </DialogTitle>
+            <DialogDescription>
+              Everything you need to scan PMTMS stock QR stickers successfully.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 text-sm sm:text-xs text-muted-foreground sm:grid-cols-3 mt-2">
             <div className="p-3 rounded-lg bg-surface-2/50 border border-border/60">
               <p className="font-semibold text-foreground text-sm mb-1">How to get QRs</p>
-              <p>Open any item and click <span className="font-medium text-foreground">QR & print sticker</span>.</p>
+              <p>Open any item and click <span className="font-medium text-foreground">QR &amp; print sticker</span>.</p>
             </div>
             <div className="p-3 rounded-lg bg-surface-2/50 border border-border/60">
               <p className="font-semibold text-foreground text-sm mb-1">Sticker size</p>
@@ -344,8 +370,13 @@ function AdminStockScan() {
               <p>Adjust distance (10–25 cm), clean lens, ensure room lighting and no glare on sticker.</p>
             </div>
           </div>
-        </div>
-      </div>
+          <DialogFooter className="sm:justify-end justify-stretch mt-4">
+            <Button onClick={() => setInfoOpen(false)}>
+              <X className="size-4" /> Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 }

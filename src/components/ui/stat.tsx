@@ -32,9 +32,9 @@ export function Stat({
     <Link
       to={to}
       search={search as any}
-      className="surface-card p-5 group transition hover:border-primary/40 hover:bg-surface-2 focus-ring"
+      className="surface-card p-5 group transition hover:border-primary/40 hover:bg-surface-2 focus-ring min-w-0 overflow-hidden"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <span className={`size-10 grid place-items-center rounded-md border ${toneCls}`}>
           <Icon className="size-5" />
         </span>

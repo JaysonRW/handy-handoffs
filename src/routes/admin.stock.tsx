@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Plus, ScanLine } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AdminShell } from "@/components/layout/AdminShell";
+import { ShellActionsMenu } from "@/components/layout/ShellActionsMenu";
 import { SyncIndicator } from "@/features/sync/SyncIndicator";
 import { StockStatsBar } from "@/features/stock/components/StockStatsBar";
 import {
@@ -80,7 +81,31 @@ function AdminStockIndex() {
       title="Stock control"
       subtitle="Tools, equipment and consumables. Scan QR to jump to an item."
       actions={
-        <>
+        <ShellActionsMenu
+          menuLabel="Stock actions"
+          items={[
+            {
+              key: "sync",
+              label: "Sync status",
+              labelOnly: true,
+              node: <SyncIndicator />,
+            },
+            {
+              key: "scan",
+              label: "Scan QR",
+              icon: ScanLine,
+              href: "/admin/stock/scan",
+              variant: "secondary",
+            },
+            {
+              key: "new",
+              label: "New item",
+              icon: Plus,
+              onClick: () => setNewOpen(true),
+              variant: "default",
+            },
+          ]}
+        >
           <SyncIndicator />
           <Link to="/admin/stock/scan" className={buttonVariants({ variant: "secondary" })}>
             <ScanLine className="size-4" /> Scan QR
@@ -88,7 +113,7 @@ function AdminStockIndex() {
           <Button onClick={() => setNewOpen(true)}>
             <Plus className="size-4" /> New item
           </Button>
-        </>
+        </ShellActionsMenu>
       }
     >
       {lastError ? (

@@ -78,6 +78,12 @@ export function useQrScanner(
             height: options?.qrbox ?? 260,
           },
           aspectRatio: 1.0,
+          videoConstraints: {
+            facingMode,
+            playsInline: true,
+            width: { ideal: 1280 },
+            height: { ideal: 1280 },
+          },
         },
         (decodedText) => {
           setDetected((prev) => (prev === decodedText ? prev : decodedText));

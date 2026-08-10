@@ -15,6 +15,7 @@ import { SyncIndicator } from "@/features/sync/SyncIndicator";
 import { useAdminAuth } from "@/features/auth/store";
 import { selectPendingSync, useTasksStore } from "@/features/tasks/store";
 import { useStockStore } from "@/features/stock/store";
+import { MobileBottomTabs, type MobileTabItem } from "@/components/layout/MobileBottomTabs";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
 const items: NavItem[] = [
@@ -41,7 +42,17 @@ export function AdminShell({
   const navigate = useNavigate();
   const logout = useAdminAuth((s) => s.logout);
   const pending = useTasksStore((s) => selectPendingSync(s).length);
+  const overdueLoansCount = useStockStore((s) =>
+    s.loans.filter((l) => !l.returnedAt && l.expectedReturnAt && new Date(l.expectedReturnAt) < new Date()).length,
+  );
   const showBack = pathname !== "/admin";
+
+  const mobileTabs: MobileTabItem[] = [
+    { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+    { to: "/admin/tasks", label: "Tasks", icon: ListChecks, badgeTone: "accent" },
+    { to: "/admin/blocks", label: "Building", icon: Building2 },
+    { to: "/admin/stock", label: "Stock", icon: Package, badge: overdueLoansCount || undefined, badgeTone: "p1" },
+  ];
 
   function handleBack() {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -98,7 +109,7 @@ export function AdminShell({
         </div>
       </aside>
 
-      <main className="flex flex-col min-w-0">
+      <main className="flex flex-col min-w-0 pb-20 lg:pb-0">
         <header className="sticky top-0 z-20 bg-background/80 backdrop-blur border-b border-border">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-8 sm:py-5">
             <div className="min-w-0 flex items-start gap-3">
@@ -120,8 +131,10 @@ export function AdminShell({
             <div className="flex items-center gap-2 shrink-0">{actions}</div>
           </div>
         </header>
-        <div className="p-4 sm:p-8 flex-1">{children}</div>
+        <div className="p-4 sm:p-8 flex-1 min-w-0">{children}</div>
       </main>
+
+      <MobileBottomTabs items={mobileTabs} />
     </div>
   );
 }
