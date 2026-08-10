@@ -7,16 +7,21 @@ import {
   Building2,
   CloudOff,
   LogOut,
+  Package,
+  ScanLine,
+  Plus,
 } from "lucide-react";
 import { SyncIndicator } from "@/features/sync/SyncIndicator";
 import { useAdminAuth } from "@/features/auth/store";
 import { selectPendingSync, useTasksStore } from "@/features/tasks/store";
+import { useStockStore } from "@/features/stock/store";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
 const items: NavItem[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/admin/tasks", label: "Tasks", icon: ListChecks },
   { to: "/admin/blocks", label: "Building & Flats", icon: Building2 },
+  { to: "/admin/stock", label: "Stock", icon: Package },
 ];
 
 export function AdminShell({

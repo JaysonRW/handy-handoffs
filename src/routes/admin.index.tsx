@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, CloudOff, Inbox, CheckCircle2, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AdminShell } from "@/components/layout/AdminShell";
+import { Stat } from "@/components/ui/stat";
 import { useTasksStore } from "@/features/tasks/store";
 import { SyncIndicator } from "@/features/sync/SyncIndicator";
 import { PriorityBadge } from "@/features/tasks/components/PriorityBadge";
@@ -29,11 +30,11 @@ function AdminOverview() {
   return (
     <AdminShell title="Operations overview" subtitle="Live status across all blocks" actions={<SyncIndicator />}>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <Stat label="New (awaiting triage)" value={counts.newQ} icon={Inbox} tone="primary" href="/admin/tasks?status=NEW" />
-        <Stat label="P1 open" value={counts.p1} icon={AlertTriangle} tone="danger" href="/admin/tasks?priority=P1" />
-        <Stat label="P2 open" value={counts.p2} icon={AlertTriangle} tone="accent" href="/admin/tasks?priority=P2" />
-        <Stat label="P3 open" value={counts.p3} icon={AlertTriangle} tone="primary" href="/admin/tasks?priority=P3" />
-        <Stat label="Completed" value={counts.done} icon={CheckCircle2} tone="success" href="/admin/tasks?status=DONE" />
+        <Stat label="New (awaiting triage)" value={counts.newQ} icon={Inbox} tone="primary" to="/admin/tasks" search={{ status: "NEW" }} />
+        <Stat label="P1 open" value={counts.p1} icon={AlertTriangle} tone="danger" to="/admin/tasks" search={{ priority: "P1" }} />
+        <Stat label="P2 open" value={counts.p2} icon={AlertTriangle} tone="accent" to="/admin/tasks" search={{ priority: "P2" }} />
+        <Stat label="P3 open" value={counts.p3} icon={AlertTriangle} tone="primary" to="/admin/tasks" search={{ priority: "P3" }} />
+        <Stat label="Completed" value={counts.done} icon={CheckCircle2} tone="success" to="/admin/tasks" search={{ status: "DONE" }} />
       </div>
 
       <div className="mt-8">
@@ -80,24 +81,5 @@ function AdminOverview() {
         </section>
       </div>
     </AdminShell>
-  );
-}
-
-function Stat({ label, value, icon: Icon, tone, href }: { label: string; value: number; icon: any; tone: "primary" | "accent" | "success" | "danger"; href: string }) {
-  const toneCls = {
-    primary: "text-primary bg-primary/15 border-primary/30",
-    accent: "text-accent-foreground bg-accent/15 border-accent/30",
-    success: "text-success bg-success/15 border-success/30",
-    danger: "text-[color:var(--color-p1)] bg-[color:var(--color-p1)]/15 border-[color:var(--color-p1)]/30",
-  }[tone];
-  return (
-    <Link to={href as any} className="surface-card p-5 group transition hover:border-primary/40 hover:bg-surface-2 focus-ring">
-      <div className="flex items-center justify-between">
-        <span className={`size-10 grid place-items-center rounded-md border ${toneCls}`}><Icon className="size-5" /></span>
-        <ArrowRight className="size-4 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-foreground" />
-      </div>
-      <div className="mt-4 text-3xl font-black tabular-nums">{value}</div>
-      <div className="text-xs uppercase tracking-wider text-muted-foreground mt-1">{label}</div>
-    </Link>
   );
 }

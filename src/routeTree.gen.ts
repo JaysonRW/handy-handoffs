@@ -30,6 +30,7 @@ import { Route as CaretakerChecklistRouteImport } from './routes/caretaker.check
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminSyncRouteImport } from './routes/admin.sync'
+import { Route as AdminStockRouteImport } from './routes/admin.stock'
 import { Route as AdminNewRouteImport } from './routes/admin.new'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminBlocksRouteImport } from './routes/admin.blocks'
@@ -40,6 +41,7 @@ import { Route as StaffUserIdNewRouteImport } from './routes/staff.$userId.new'
 import { Route as CleanerTasksTaskIdRouteImport } from './routes/cleaner.tasks.$taskId'
 import { Route as CaretakerTasksTaskIdRouteImport } from './routes/caretaker.tasks.$taskId'
 import { Route as AdminTasksTaskIdRouteImport } from './routes/admin.tasks.$taskId'
+import { Route as AdminStockItemIdRouteImport } from './routes/admin.stock.$itemId'
 import { Route as StaffUserIdTasksTaskIdRouteImport } from './routes/staff.$userId.tasks.$taskId'
 
 const ReportRoute = ReportRouteImport.update({
@@ -147,6 +149,11 @@ const AdminSyncRoute = AdminSyncRouteImport.update({
   path: '/sync',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminStockRoute = AdminStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminNewRoute = AdminNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -197,6 +204,11 @@ const AdminTasksTaskIdRoute = AdminTasksTaskIdRouteImport.update({
   path: '/$taskId',
   getParentRoute: () => AdminTasksRoute,
 } as any)
+const AdminStockItemIdRoute = AdminStockItemIdRouteImport.update({
+  id: '/$itemId',
+  path: '/$itemId',
+  getParentRoute: () => AdminStockRoute,
+} as any)
 const StaffUserIdTasksTaskIdRoute = StaffUserIdTasksTaskIdRouteImport.update({
   id: '/$taskId',
   path: '/$taskId',
@@ -212,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/admin/blocks': typeof AdminBlocksRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
+  '/admin/stock': typeof AdminStockRouteWithChildren
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
@@ -228,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/cleaner/': typeof CleanerIndexRoute
   '/report/': typeof ReportIndexRoute
   '/staff/': typeof StaffIndexRoute
+  '/admin/stock/$itemId': typeof AdminStockItemIdRoute
   '/admin/tasks/$taskId': typeof AdminTasksTaskIdRoute
   '/caretaker/tasks/$taskId': typeof CaretakerTasksTaskIdRoute
   '/cleaner/tasks/$taskId': typeof CleanerTasksTaskIdRoute
@@ -242,6 +256,7 @@ export interface FileRoutesByTo {
   '/admin/blocks': typeof AdminBlocksRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
+  '/admin/stock': typeof AdminStockRouteWithChildren
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
@@ -257,6 +272,7 @@ export interface FileRoutesByTo {
   '/cleaner': typeof CleanerIndexRoute
   '/report': typeof ReportIndexRoute
   '/staff': typeof StaffIndexRoute
+  '/admin/stock/$itemId': typeof AdminStockItemIdRoute
   '/admin/tasks/$taskId': typeof AdminTasksTaskIdRoute
   '/caretaker/tasks/$taskId': typeof CaretakerTasksTaskIdRoute
   '/cleaner/tasks/$taskId': typeof CleanerTasksTaskIdRoute
@@ -276,6 +292,7 @@ export interface FileRoutesById {
   '/admin/blocks': typeof AdminBlocksRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
+  '/admin/stock': typeof AdminStockRouteWithChildren
   '/admin/sync': typeof AdminSyncRoute
   '/admin/tasks': typeof AdminTasksRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
@@ -292,6 +309,7 @@ export interface FileRoutesById {
   '/cleaner/': typeof CleanerIndexRoute
   '/report/': typeof ReportIndexRoute
   '/staff/': typeof StaffIndexRoute
+  '/admin/stock/$itemId': typeof AdminStockItemIdRoute
   '/admin/tasks/$taskId': typeof AdminTasksTaskIdRoute
   '/caretaker/tasks/$taskId': typeof CaretakerTasksTaskIdRoute
   '/cleaner/tasks/$taskId': typeof CleanerTasksTaskIdRoute
@@ -312,6 +330,7 @@ export interface FileRouteTypes {
     | '/admin/blocks'
     | '/admin/login'
     | '/admin/new'
+    | '/admin/stock'
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
@@ -328,6 +347,7 @@ export interface FileRouteTypes {
     | '/cleaner/'
     | '/report/'
     | '/staff/'
+    | '/admin/stock/$itemId'
     | '/admin/tasks/$taskId'
     | '/caretaker/tasks/$taskId'
     | '/cleaner/tasks/$taskId'
@@ -342,6 +362,7 @@ export interface FileRouteTypes {
     | '/admin/blocks'
     | '/admin/login'
     | '/admin/new'
+    | '/admin/stock'
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
@@ -357,6 +378,7 @@ export interface FileRouteTypes {
     | '/cleaner'
     | '/report'
     | '/staff'
+    | '/admin/stock/$itemId'
     | '/admin/tasks/$taskId'
     | '/caretaker/tasks/$taskId'
     | '/cleaner/tasks/$taskId'
@@ -375,6 +397,7 @@ export interface FileRouteTypes {
     | '/admin/blocks'
     | '/admin/login'
     | '/admin/new'
+    | '/admin/stock'
     | '/admin/sync'
     | '/admin/tasks'
     | '/admin/users'
@@ -391,6 +414,7 @@ export interface FileRouteTypes {
     | '/cleaner/'
     | '/report/'
     | '/staff/'
+    | '/admin/stock/$itemId'
     | '/admin/tasks/$taskId'
     | '/caretaker/tasks/$taskId'
     | '/cleaner/tasks/$taskId'
@@ -560,6 +584,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSyncRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/stock': {
+      id: '/admin/stock'
+      path: '/stock'
+      fullPath: '/admin/stock'
+      preLoaderRoute: typeof AdminStockRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/new': {
       id: '/admin/new'
       path: '/new'
@@ -630,6 +661,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTasksTaskIdRouteImport
       parentRoute: typeof AdminTasksRoute
     }
+    '/admin/stock/$itemId': {
+      id: '/admin/stock/$itemId'
+      path: '/$itemId'
+      fullPath: '/admin/stock/$itemId'
+      preLoaderRoute: typeof AdminStockItemIdRouteImport
+      parentRoute: typeof AdminStockRoute
+    }
     '/staff/$userId/tasks/$taskId': {
       id: '/staff/$userId/tasks/$taskId'
       path: '/$taskId'
@@ -639,6 +677,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminStockRouteChildren {
+  AdminStockItemIdRoute: typeof AdminStockItemIdRoute
+}
+
+const AdminStockRouteChildren: AdminStockRouteChildren = {
+  AdminStockItemIdRoute: AdminStockItemIdRoute,
+}
+
+const AdminStockRouteWithChildren = AdminStockRoute._addFileChildren(
+  AdminStockRouteChildren,
+)
 
 interface AdminTasksRouteChildren {
   AdminTasksTaskIdRoute: typeof AdminTasksTaskIdRoute
@@ -656,6 +706,7 @@ interface AdminRouteChildren {
   AdminBlocksRoute: typeof AdminBlocksRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminNewRoute: typeof AdminNewRoute
+  AdminStockRoute: typeof AdminStockRouteWithChildren
   AdminSyncRoute: typeof AdminSyncRoute
   AdminTasksRoute: typeof AdminTasksRouteWithChildren
   AdminUsersRoute: typeof AdminUsersRoute
@@ -666,6 +717,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminBlocksRoute: AdminBlocksRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminNewRoute: AdminNewRoute,
+  AdminStockRoute: AdminStockRouteWithChildren,
   AdminSyncRoute: AdminSyncRoute,
   AdminTasksRoute: AdminTasksRouteWithChildren,
   AdminUsersRoute: AdminUsersRoute,
