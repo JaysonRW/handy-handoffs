@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Building2,
+  CheckSquare2,
   CloudOff,
   LogOut,
   Package,
@@ -14,6 +15,7 @@ import {
 import { SyncIndicator } from "@/features/sync/SyncIndicator";
 import { useAdminAuth } from "@/features/auth/store";
 import { selectPendingSync, useTasksStore } from "@/features/tasks/store";
+import { useChecklistStore } from "@/features/checklist/store";
 import { useStockStore } from "@/features/stock/store";
 import { MobileBottomTabs, type MobileTabItem } from "@/components/layout/MobileBottomTabs";
 
@@ -22,6 +24,7 @@ const items: NavItem[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/admin/tasks", label: "Tasks", icon: ListChecks },
   { to: "/admin/blocks", label: "Building & Flats", icon: Building2 },
+  { to: "/admin/checklist", label: "Checklist", icon: CheckSquare2 },
   { to: "/admin/stock", label: "Stock", icon: Package },
 ];
 
@@ -51,6 +54,7 @@ export function AdminShell({
     { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
     { to: "/admin/tasks", label: "Tasks", icon: ListChecks, badgeTone: "accent" },
     { to: "/admin/blocks", label: "Building", icon: Building2 },
+    { to: "/admin/checklist", label: "Checklist", icon: CheckSquare2 },
     { to: "/admin/stock", label: "Stock", icon: Package, badge: overdueLoansCount || undefined, badgeTone: "p1" },
   ];
 

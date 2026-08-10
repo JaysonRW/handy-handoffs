@@ -26,6 +26,11 @@ type CompletionRow = {
   updated_at: string;
 };
 
+const ITEM_SELECT =
+  "id,title,period_type,period_rule,building_id,sort_order,active,created_at,updated_at,created_by_id";
+
+const COMPLETION_SELECT = "item_id,period_key,checked_at,checked_by_id,updated_at";
+
 function mapItem(row: ItemRow): ChecklistItem {
   return {
     id: row.id,
@@ -66,22 +71,33 @@ function itemToRow(item: ChecklistItem): ItemRow {
   };
 }
 
-export async function fetchChecklistSnapshot(): Promise<ChecklistSnapshot | null> {
+export type FetchSnapshotOptions = {
+  /**
+   * Caretaker runtime: includeInactive=false (default backward compat).
+   * Admin CRUD screen: includeInactive=true (para ver arquivados e poder restaurar).
+   */
+  includeInactive?: boolean;
+};
+
+export async function fetchChecklistSnapshot(
+  opts: FetchSnapshotOptions = {},
+): Promise<ChecklistSnapshot | null> {
   if (!isSupabaseConfigured) return null;
 
+  const { includeInactive = false } = opts;
   const supabase = getSupabaseBrowserClient();
+
+  const itemsQuery = supabase.from("checklist_items").select(ITEM_SELECT);
+  if (!includeInactive) itemsQuery.eq("active", true);
+  itemsQuery
+    .order("sort_order", { ascending: true })
+    .order("title", { ascending: true });
+
   const [itemsResult, completionsResult] = await Promise.all([
-    supabase
-      .from("checklist_items")
-      .select(
-        "id,title,period_type,period_rule,building_id,sort_order,active,created_at,updated_at,created_by_id",
-      )
-      .eq("active", true)
-      .order("sort_order", { ascending: true })
-      .order("title", { ascending: true }),
+    itemsQuery,
     supabase
       .from("checklist_completions")
-      .select("item_id,period_key,checked_at,checked_by_id,updated_at")
+      .select(COMPLETION_SELECT)
       .order("checked_at", { ascending: false }),
   ]);
 
@@ -91,7 +107,7 @@ export async function fetchChecklistSnapshot(): Promise<ChecklistSnapshot | null
   const items = ((itemsResult.data ?? []) as ItemRow[]).map(mapItem);
   const completions = ((completionsResult.data ?? []) as CompletionRow[]).map(mapCompletion);
 
-  if (items.length === 0 && completions.length === 0) return null;
+  if (!includeInactive && items.length === 0 && completions.length === 0) return null;
   return { items, completions };
 }
 
@@ -115,12 +131,55 @@ export async function upsertChecklistCompletion(
   const { data, error } = await supabase
     .from("checklist_completions")
     .upsert(row, { onConflict: "item_id,period_key" })
-    .select("item_id,period_key,checked_at,checked_by_id,updated_at")
+    .select(COMPLETION_SELECT)
     .single();
 
   if (error) throw error;
   return mapCompletion(data as CompletionRow);
 }
 
-// Export helpers para eventual uso admin
-export { itemToRow, mapItem as mapChecklistItemFromRow, mapCompletion as mapChecklistCompletionFromRow };
+export async function insertChecklistItem(item: ChecklistItem): Promise<ChecklistItem> {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase nao esta configurado neste build.");
+  }
+  const supabase = getSupabaseBrowserClient();
+  const row = itemToRow({ ...item, updatedAt: toUtcIso() });
+  const { data, error } = await supabase
+    .from("checklist_items")
+    .insert(row)
+    .select(ITEM_SELECT)
+    .single();
+  if (error) throw error;
+  return mapItem(data as ItemRow);
+}
+
+export async function updateChecklistItem(item: ChecklistItem): Promise<ChecklistItem> {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase nao esta configurado neste build.");
+  }
+  const supabase = getSupabaseBrowserClient();
+  const row = itemToRow({ ...item, updatedAt: toUtcIso() });
+  const { data, error } = await supabase
+    .from("checklist_items")
+    .update(row)
+    .eq("id", row.id)
+    .select(ITEM_SELECT)
+    .single();
+  if (error) throw error;
+  return mapItem(data as ItemRow);
+}
+
+export async function deleteChecklistItemHard(itemId: string): Promise<void> {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase nao esta configurado neste build.");
+  }
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase.from("checklist_items").delete().eq("id", itemId);
+  if (error) throw error;
+}
+
+export {
+  itemToRow,
+  mapItem as mapChecklistItemFromRow,
+  mapCompletion as mapChecklistCompletionFromRow,
+};

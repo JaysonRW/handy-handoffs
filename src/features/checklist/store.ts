@@ -1,8 +1,32 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { ChecklistCompletion, ChecklistItem, ChecklistSnapshot } from "./types";
+import type { ChecklistCompletion, ChecklistItem, ChecklistPeriodType, ChecklistSnapshot } from "./types";
 import { isCheckedForCurrentPeriod, periodKeyForItem, toUtcIso } from "./period";
 import { nanoid } from "@/lib/id";
+
+type ChecklistItemPendingKind = "TOGGLE_COMPLETION" | "CREATE_ITEM" | "UPDATE_ITEM";
+
+type ChecklistItemPendingUpsert =
+  | {
+      key: string;
+      kind: "TOGGLE_COMPLETION";
+      item: ChecklistItem;
+      completion: ChecklistCompletion;
+    }
+  | {
+      key: string;
+      kind: "CREATE_ITEM" | "UPDATE_ITEM";
+      item: ChecklistItem;
+    };
+
+export type ChecklistItemDraft = {
+  title: string;
+  periodType: ChecklistPeriodType;
+  periodRule?: string;
+  buildingId?: string;
+  sortOrder?: number;
+  active?: boolean;
+};
 
 type ChecklistState = {
   items: ChecklistItem[];
@@ -12,16 +36,48 @@ type ChecklistState = {
   lastError?: string;
 
   hydrateFromServer: (snapshot: ChecklistSnapshot) => void;
-  toggleItem: (itemId: string, checkedById: string) => { item: ChecklistItem | null; upsertKey: string | null };
-  markUpsertDone: (upsertKey: string, syncedCompletion: ChecklistCompletion) => void;
+  toggleItem: (
+    itemId: string,
+    checkedById: string,
+  ) => { item: ChecklistItem | null; upsertKey: string | null };
+  markUpsertDone: (upsertKey: string, syncedPayload: ChecklistCompletion | ChecklistItem) => void;
   markUpsertFailed: (upsertKey: string, error: string) => void;
   setLastError: (error: string | undefined) => void;
-  getPendingUpserts: () => Array<{ key: string; item: ChecklistItem; completion: ChecklistCompletion }>;
+
+  addItem: (draft: ChecklistItemDraft, actorId: string) => { item: ChecklistItem; upsertKey: string };
+  editItem: (
+    itemId: string,
+    patch: Partial<Pick<ChecklistItem, "title" | "periodType" | "periodRule" | "sortOrder" | "active">>,
+    actorId: string,
+  ) => ChecklistItem | null;
+  toggleItemActive: (itemId: string, actorId: string) => ChecklistItem | null;
+  moveItem: (itemId: string, direction: "UP" | "DOWN") => void;
+
+  getPendingUpserts: () => ChecklistItemPendingUpsert[];
   resetLocal: () => void;
   getProgress: (now?: Date) => { done: number; total: number };
 };
 
 const now = () => new Date();
+
+export function checklistPendingKey(kind: ChecklistItemPendingKind, id: string) {
+  return `${kind}::${id}`;
+}
+
+function parsePendingKey(key: string): { kind: ChecklistItemPendingKind | null; id: string; rest: string } {
+  const firstSep = key.indexOf("::");
+  if (firstSep < 0) return { kind: null, id: key, rest: "" };
+  const kindSegment = key.slice(0, firstSep) as ChecklistItemPendingKind;
+  const rest = key.slice(firstSep + 2);
+  if (kindSegment === "TOGGLE_COMPLETION" || kindSegment === "CREATE_ITEM" || kindSegment === "UPDATE_ITEM") {
+    return { kind: kindSegment, id: rest, rest };
+  }
+  const secondSep = rest.indexOf("::");
+  if (secondSep >= 0) {
+    return { kind: "TOGGLE_COMPLETION", id: rest.slice(0, secondSep), rest };
+  }
+  return { kind: null, id: rest, rest };
+}
 
 export const useChecklistStore = create<ChecklistState>()(
   persist(
@@ -72,11 +128,12 @@ export const useChecklistStore = create<ChecklistState>()(
 
         if (isChecked) {
           const periodKey = periodKeyForItem(item, { now: d, lastCheckedAt: currentCheckedAt });
+          const oldKey = legacyToggleKey(item.id, periodKey);
           set((s) => ({
             completions: s.completions.filter(
               (c) => !(c.itemId === item.id && c.periodKey === periodKey),
             ),
-            pendingUpserts: s.pendingUpserts.filter((key) => key !== upsertId(item.id, periodKey)),
+            pendingUpserts: s.pendingUpserts.filter((k) => k !== oldKey && k !== checklistPendingKey("TOGGLE_COMPLETION", oldKey)),
           }));
           return { item, upsertKey: null };
         }
@@ -89,7 +146,8 @@ export const useChecklistStore = create<ChecklistState>()(
           checkedById,
           updatedAt: toUtcIso(d),
         };
-        const key = upsertId(item.id, periodKey);
+        const upsertIdInner = legacyToggleKey(item.id, periodKey);
+        const key = checklistPendingKey("TOGGLE_COMPLETION", upsertIdInner);
         set((s) => {
           const others = s.completions.filter(
             (c) => !(c.itemId === item.id && c.periodKey === periodKey),
@@ -103,20 +161,42 @@ export const useChecklistStore = create<ChecklistState>()(
         return { item, upsertKey: key };
       },
 
-      markUpsertDone: (upsertKey, syncedCompletion) => {
-        set((s) => ({
-          pendingUpserts: s.pendingUpserts.filter((k) => k !== upsertKey),
-          completions: [
-            ...s.completions.filter(
-              (c) =>
-                !(
-                  c.itemId === syncedCompletion.itemId && c.periodKey === syncedCompletion.periodKey
+      markUpsertDone: (upsertKey, syncedPayload) => {
+        set((s) => {
+          const parsed = parsePendingKey(upsertKey);
+          if (parsed.kind === "TOGGLE_COMPLETION") {
+            const completion = syncedPayload as ChecklistCompletion;
+            return {
+              pendingUpserts: s.pendingUpserts.filter((k) => k !== upsertKey),
+              completions: [
+                ...s.completions.filter(
+                  (c) =>
+                    !(
+                      c.itemId === completion.itemId && c.periodKey === completion.periodKey
+                    ),
                 ),
-            ),
-            syncedCompletion,
-          ],
-          lastError: undefined,
-        }));
+                completion,
+              ],
+              lastError: undefined,
+            };
+          }
+          if (parsed.kind === "CREATE_ITEM" || parsed.kind === "UPDATE_ITEM") {
+            const item = syncedPayload as ChecklistItem;
+            const mapItems = new Map(s.items.map((it) => [it.id, it] as const));
+            mapItems.set(item.id, item);
+            return {
+              pendingUpserts: s.pendingUpserts.filter((k) => k !== upsertKey),
+              items: Array.from(mapItems.values()).sort(
+                (a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title),
+              ),
+              lastError: undefined,
+            };
+          }
+          return {
+            pendingUpserts: s.pendingUpserts.filter((k) => k !== upsertKey),
+            lastError: undefined,
+          };
+        });
       },
 
       markUpsertFailed: (upsertKey, error) => {
@@ -127,22 +207,124 @@ export const useChecklistStore = create<ChecklistState>()(
         set({ lastError: error });
       },
 
+      addItem: (draft, actorId) => {
+        const state = get();
+        const maxSort =
+          state.items.length === 0 ? 0 : Math.max(...state.items.map((it) => it.sortOrder)) + 1;
+        const id = nanoid();
+        const created: ChecklistItem = {
+          id,
+          title: draft.title.trim(),
+          periodType: draft.periodType,
+          periodRule: draft.periodRule,
+          buildingId: draft.buildingId ?? "MASTER",
+          sortOrder: draft.sortOrder ?? maxSort,
+          active: draft.active ?? true,
+          createdAt: toUtcIso(),
+          updatedAt: toUtcIso(),
+          createdById: actorId,
+        };
+        const key = checklistPendingKey("CREATE_ITEM", id);
+        set((s) => ({
+          items: [...s.items.filter((it) => it.id !== id), created].sort(
+            (a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title),
+          ),
+          pendingUpserts: Array.from(new Set([...s.pendingUpserts, key])),
+          lastError: undefined,
+        }));
+        return { item: created, upsertKey: key };
+      },
+
+      editItem: (itemId, patch, actorId) => {
+        const state = get();
+        const existing = state.items.find((it) => it.id === itemId);
+        if (!existing) return null;
+
+        const updated: ChecklistItem = {
+          ...existing,
+          ...patch,
+          title: patch.title !== undefined ? patch.title.trim() : existing.title,
+          updatedAt: toUtcIso(),
+          createdById: existing.createdById ?? actorId,
+        };
+        const key = checklistPendingKey("UPDATE_ITEM", updated.id);
+        set((s) => ({
+          items: [...s.items.filter((it) => it.id !== updated.id), updated].sort(
+            (a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title),
+          ),
+          pendingUpserts: Array.from(new Set([...s.pendingUpserts, key])),
+          lastError: undefined,
+        }));
+        return updated;
+      },
+
+      toggleItemActive: (itemId, actorId) => {
+        const state = get();
+        const existing = state.items.find((it) => it.id === itemId);
+        if (!existing) return null;
+        return get().editItem(itemId, { active: !existing.active }, actorId);
+      },
+
+      moveItem: (itemId, direction) => {
+        const state = get();
+        const list = [...state.items].sort(
+          (a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title),
+        );
+        const idx = list.findIndex((it) => it.id === itemId);
+        if (idx < 0) return;
+        const target = direction === "UP" ? idx - 1 : idx + 1;
+        if (target < 0 || target >= list.length) return;
+        const a = list[idx]!;
+        const b = list[target]!;
+        const aOrder = a.sortOrder;
+        const bOrder = b.sortOrder;
+        const nowIso = toUtcIso();
+        const aUpdated: ChecklistItem = { ...a, sortOrder: bOrder, updatedAt: nowIso };
+        const bUpdated: ChecklistItem = { ...b, sortOrder: aOrder, updatedAt: nowIso };
+        const keyA = checklistPendingKey("UPDATE_ITEM", aUpdated.id);
+        const keyB = checklistPendingKey("UPDATE_ITEM", bUpdated.id);
+
+        set((s) => {
+          const rest = s.items.filter((it) => it.id !== aUpdated.id && it.id !== bUpdated.id);
+          return {
+            items: [...rest, aUpdated, bUpdated].sort(
+              (x, y) => x.sortOrder - y.sortOrder || x.title.localeCompare(y.title),
+            ),
+            pendingUpserts: Array.from(new Set([...s.pendingUpserts, keyA, keyB])),
+            lastError: undefined,
+          };
+        });
+      },
+
       getPendingUpserts: () => {
         const state = get();
-        const out: Array<{ key: string; item: ChecklistItem; completion: ChecklistCompletion }> = [];
+        const out: ChecklistItemPendingUpsert[] = [];
         for (const key of state.pendingUpserts) {
-          const [itemId, periodKey] = parseUpsertId(key);
-          const item = state.items.find((i) => i.id === itemId) ?? null;
-          const completion = state.completions.find(
-            (c) => c.itemId === itemId && c.periodKey === periodKey,
-          );
-          if (item && completion) out.push({ key, item, completion });
+          const parsed = parsePendingKey(key);
+          if (parsed.kind === "TOGGLE_COMPLETION") {
+            const [itemId, periodKey] = splitLegacyToggleKey(parsed.id);
+            if (!itemId || !periodKey) continue;
+            const item = state.items.find((i) => i.id === itemId) ?? null;
+            const completion = state.completions.find(
+              (c) => c.itemId === itemId && c.periodKey === periodKey,
+            );
+            if (item && completion) out.push({ key, kind: "TOGGLE_COMPLETION", item, completion });
+          } else if (parsed.kind === "CREATE_ITEM" || parsed.kind === "UPDATE_ITEM") {
+            const item = state.items.find((i) => i.id === parsed.id) ?? null;
+            if (item) out.push({ key, kind: parsed.kind, item });
+          }
         }
         return out;
       },
 
       resetLocal: () => {
-        set({ items: [], completions: [], hydratedFromServerAt: undefined, pendingUpserts: [], lastError: undefined });
+        set({
+          items: [],
+          completions: [],
+          hydratedFromServerAt: undefined,
+          pendingUpserts: [],
+          lastError: undefined,
+        });
       },
 
       getProgress: (d = now()) => {
@@ -156,7 +338,7 @@ export const useChecklistStore = create<ChecklistState>()(
         return { done, total: active.length };
       },
     }),
-    { name: "pmtms.checklist.v1" },
+    { name: "pmtms.checklist.v2" },
   ),
 );
 
@@ -173,14 +355,14 @@ function findCurrentPeriodCheckedAt(
   return latest.checkedAt;
 }
 
-function upsertId(itemId: string, periodKey: string) {
+function legacyToggleKey(itemId: string, periodKey: string) {
   return `${itemId}::${periodKey}`;
 }
 
-function parseUpsertId(key: string): [string, string] {
-  const idx = key.indexOf("::");
-  if (idx < 0) return [key, ""];
-  return [key.slice(0, idx), key.slice(idx + 2)];
+function splitLegacyToggleKey(combined: string): [string, string] {
+  const idx = combined.indexOf("::");
+  if (idx < 0) return [combined, ""];
+  return [combined.slice(0, idx), combined.slice(idx + 2)];
 }
 
 export const selectCheckedInCurrentPeriod =

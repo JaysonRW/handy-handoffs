@@ -33,6 +33,7 @@ import { Route as AdminSyncRouteImport } from './routes/admin.sync'
 import { Route as AdminStockRouteImport } from './routes/admin.stock'
 import { Route as AdminNewRouteImport } from './routes/admin.new'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminChecklistRouteImport } from './routes/admin.checklist'
 import { Route as AdminBlocksRouteImport } from './routes/admin.blocks'
 import { Route as StaffUserIdIndexRouteImport } from './routes/staff.$userId.index'
 import { Route as StaffUserIdTasksRouteImport } from './routes/staff.$userId.tasks'
@@ -165,6 +166,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminChecklistRoute = AdminChecklistRouteImport.update({
+  id: '/checklist',
+  path: '/checklist',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminBlocksRoute = AdminBlocksRouteImport.update({
   id: '/blocks',
   path: '/blocks',
@@ -228,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/cleaner': typeof CleanerRouteWithChildren
   '/report': typeof ReportRouteWithChildren
   '/admin/blocks': typeof AdminBlocksRoute
+  '/admin/checklist': typeof AdminChecklistRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
   '/admin/stock': typeof AdminStockRouteWithChildren
@@ -261,6 +268,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin/blocks': typeof AdminBlocksRoute
+  '/admin/checklist': typeof AdminChecklistRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
   '/admin/stock': typeof AdminStockRouteWithChildren
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/cleaner': typeof CleanerRouteWithChildren
   '/report': typeof ReportRouteWithChildren
   '/admin/blocks': typeof AdminBlocksRoute
+  '/admin/checklist': typeof AdminChecklistRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
   '/admin/stock': typeof AdminStockRouteWithChildren
@@ -337,6 +346,7 @@ export interface FileRouteTypes {
     | '/cleaner'
     | '/report'
     | '/admin/blocks'
+    | '/admin/checklist'
     | '/admin/login'
     | '/admin/new'
     | '/admin/stock'
@@ -370,6 +380,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin/blocks'
+    | '/admin/checklist'
     | '/admin/login'
     | '/admin/new'
     | '/admin/stock'
@@ -406,6 +417,7 @@ export interface FileRouteTypes {
     | '/cleaner'
     | '/report'
     | '/admin/blocks'
+    | '/admin/checklist'
     | '/admin/login'
     | '/admin/new'
     | '/admin/stock'
@@ -617,6 +629,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/checklist': {
+      id: '/admin/checklist'
+      path: '/checklist'
+      fullPath: '/admin/checklist'
+      preLoaderRoute: typeof AdminChecklistRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/blocks': {
       id: '/admin/blocks'
       path: '/blocks'
@@ -725,6 +744,7 @@ const AdminTasksRouteWithChildren = AdminTasksRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminBlocksRoute: typeof AdminBlocksRoute
+  AdminChecklistRoute: typeof AdminChecklistRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminNewRoute: typeof AdminNewRoute
   AdminStockRoute: typeof AdminStockRouteWithChildren
@@ -736,6 +756,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBlocksRoute: AdminBlocksRoute,
+  AdminChecklistRoute: AdminChecklistRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminNewRoute: AdminNewRoute,
   AdminStockRoute: AdminStockRouteWithChildren,

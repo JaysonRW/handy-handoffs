@@ -8,6 +8,8 @@ import {
 import { useChecklistStore } from "@/features/checklist/store";
 import {
   fetchChecklistSnapshot,
+  insertChecklistItem,
+  updateChecklistItem,
   upsertChecklistCompletion,
 } from "@/features/checklist/supabase";
 import {
@@ -162,8 +164,16 @@ async function syncChecklist(trigger: "auto" | "manual") {
   let failed = 0;
   for (const p of pending) {
     try {
-      const completion = await upsertChecklistCompletion(p.completion);
-      checklistStore.markUpsertDone(p.key, completion);
+      if (p.kind === "TOGGLE_COMPLETION") {
+        const completion = await upsertChecklistCompletion(p.completion);
+        checklistStore.markUpsertDone(p.key, completion);
+      } else if (p.kind === "CREATE_ITEM") {
+        const saved = await insertChecklistItem(p.item);
+        checklistStore.markUpsertDone(p.key, saved);
+      } else if (p.kind === "UPDATE_ITEM") {
+        const saved = await updateChecklistItem(p.item);
+        checklistStore.markUpsertDone(p.key, saved);
+      }
       synced += 1;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
