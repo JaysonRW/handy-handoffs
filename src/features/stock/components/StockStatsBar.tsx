@@ -1,6 +1,6 @@
-import { Package, AlertTriangle, UserCheck, ClockAlert } from "lucide-react";
+import { Package, UserCheck, ClockAlert, AlertTriangle } from "lucide-react";
 import { Stat } from "@/components/ui/stat";
-import { useStockStore, lowStockItems, overdueLoans } from "../store";
+import { useStockStore, overdueLoans } from "../store";
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
@@ -11,10 +11,11 @@ export function StockStatsBar() {
 
   const counts = useMemo(() => {
     const total = items.filter((i) => i.active).length;
-    const low = lowStockItems(items).length;
     const openLoans = loans.filter((l) => !l.returnedAt).length;
     const overdue = overdueLoans(loans);
-    return { total, low, openLoans, overdueList: overdue, overdueCount: overdue.length };
+    const qtyOnLoan = openLoans;
+    const qtyInStock = items.reduce((acc, i) => (i.active ? acc + Math.max(0, Number(i.qtyInStock ?? 0)) : acc), 0);
+    return { total, openLoans, overdueList: overdue, overdueCount: overdue.length, qtyOnLoan, qtyInStock };
   }, [items, loans]);
 
   return (
@@ -28,12 +29,11 @@ export function StockStatsBar() {
           to="/admin/stock"
         />
         <Stat
-          label="Low stock"
-          value={counts.low}
-          icon={AlertTriangle}
-          tone="accent"
+          label="Total in stock (qty)"
+          value={counts.qtyInStock}
+          icon={Package}
+          tone="success"
           to="/admin/stock"
-          search={{ filter: "low" }}
         />
         <Stat
           label="On loan"
@@ -56,7 +56,7 @@ export function StockStatsBar() {
       {counts.overdueCount > 0 ? (
         <div className="surface-card border border-[color:var(--color-p1)]/40 bg-[color:var(--color-p1)]/5 p-4 rounded-lg">
           <div className="flex items-start gap-3">
-            <ClockAlert className="size-5 mt-0.5 text-[color:var(--color-p1)] shrink-0" />
+            <AlertTriangle className="size-5 mt-0.5 text-[color:var(--color-p1)] shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-[color:var(--color-p1)]">
                 {counts.overdueCount} equipment loan(s) overdue — contact borrower to return.

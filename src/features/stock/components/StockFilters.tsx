@@ -5,7 +5,7 @@ import type { StockCategory } from "../types";
 export type StockFilterState = {
   search: string;
   category: StockCategory | "ALL";
-  status: "ALL" | "ACTIVE" | "INACTIVE" | "LOW" | "LOANED" | "OVERDUE";
+  status: "ALL" | "ACTIVE" | "INACTIVE" | "LOANED" | "OVERDUE";
 };
 
 export function StockFilters({
@@ -13,25 +13,22 @@ export function StockFilters({
   onChange,
   overdueItemIds,
   loanedItemIds,
-  lowItemIds,
 }: {
   value: StockFilterState;
   onChange: (v: StockFilterState) => void;
   overdueItemIds: Set<string>;
   loanedItemIds: Set<string>;
-  lowItemIds: Set<string>;
 }) {
   const [focus, setFocus] = useState(false);
   const statusBadges = useMemo(
     () => [
       { k: "ALL", label: "All" },
       { k: "ACTIVE", label: "Active" },
-      { k: "LOW", label: `Low stock (${lowItemIds.size})` },
       { k: "LOANED", label: `Loaned (${loanedItemIds.size})` },
       { k: "OVERDUE", label: `Overdue (${overdueItemIds.size})` },
       { k: "INACTIVE", label: "Inactive" },
     ],
-    [loanedItemIds, lowItemIds, overdueItemIds],
+    [loanedItemIds, overdueItemIds],
   );
 
   return (

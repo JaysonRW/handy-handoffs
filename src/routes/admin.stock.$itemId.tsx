@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AdminShell } from "@/components/layout/AdminShell";
-import { useStockStore, lowStockItems, overdueLoans, openLoansForItem } from "@/features/stock/store";
+import { useStockStore, overdueLoans, openLoansForItem } from "@/features/stock/store";
 import { useMemo, useState } from "react";
 import { ItemDetailHeader } from "@/features/stock/components/ItemDetailHeader";
 import { ItemActions } from "@/features/stock/components/ItemActions";
@@ -25,8 +25,8 @@ function AdminStockItemDetail() {
   const item = items.find((i) => i.id === itemId);
   const [editOpen, setEditOpen] = useState(false);
 
-  const { itemMovements, itemLoans, openLoans, isLowStock, isOverdue } = useMemo(() => {
-    if (!item) return { itemMovements: [], itemLoans: [], openLoans: [], isLowStock: false, isOverdue: false };
+  const { itemMovements, itemLoans, openLoans, isOverdue } = useMemo(() => {
+    if (!item) return { itemMovements: [], itemLoans: [], openLoans: [], isOverdue: false };
     const mv = movements
       .filter((m) => m.itemId === item.id)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -34,9 +34,8 @@ function AdminStockItemDetail() {
       .filter((l) => l.itemId === item.id)
       .sort((a, b) => new Date(b.loanedAt).getTime() - new Date(a.loanedAt).getTime());
     const open = openLoansForItem(ln, item.id);
-    const low = lowStockItems([item]).length > 0;
     const anyOverdue = overdueLoans(open).length > 0;
-    return { itemMovements: mv, itemLoans: ln, openLoans: open, isLowStock: low, isOverdue: anyOverdue };
+    return { itemMovements: mv, itemLoans: ln, openLoans: open, isOverdue: anyOverdue };
   }, [item, movements, loans]);
 
   if (!item) throw notFound();
@@ -57,7 +56,6 @@ function AdminStockItemDetail() {
           item={item}
           actorId={ACTOR_ID}
           openLoans={openLoans.length}
-          isLowStock={isLowStock}
           isOverdue={isOverdue}
           onEdit={() => setEditOpen(true)}
         />

@@ -1,18 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, PackageOpen, AlertTriangle, UserCheck, ClockAlert } from "lucide-react";
+import { ArrowRight, PackageOpen, UserCheck, ClockAlert } from "lucide-react";
 import type { StockItem, StockLoan } from "../types";
 import { cn } from "@/lib/utils";
 
 export function StockItemCard({
   item,
   openLoans,
-  isLowStock,
   isOverdue,
   onOpenEdit,
 }: {
   item: StockItem;
   openLoans: StockLoan[];
-  isLowStock: boolean;
   isOverdue: boolean;
   onOpenEdit?: (item: StockItem) => void;
 }) {
@@ -27,17 +25,12 @@ export function StockItemCard({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold truncate">{item.name}</p>
           <p className="text-xs text-muted-foreground truncate">
-            SKU {item.sku} · {item.category === "TOOLS" ? "Tool" : item.category === "CONSUMABLES" ? "Consumable" : "Other"} · unit {item.unit}
+            SKU {item.sku} · {item.category === "TOOLS" ? "Tool" : item.category === "CONSUMABLES" ? "Consumable" : "Other"}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1 flex-wrap justify-end">
           {!item.active ? (
             <span className="chip bg-muted/50 text-muted-foreground">Inactive</span>
-          ) : null}
-          {isLowStock ? (
-            <span className="chip border-accent/40 bg-accent/15 text-accent-foreground">
-              <AlertTriangle className="size-3" /> Low
-            </span>
           ) : null}
           {isOverdue ? (
             <span className="chip border-[color:var(--color-p1)]/40 bg-[color:var(--color-p1)]/15 text-[color:var(--color-p1)]">

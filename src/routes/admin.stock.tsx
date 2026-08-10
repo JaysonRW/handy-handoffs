@@ -19,7 +19,6 @@ const ADMIN_ACTOR_ID = "u_admin";
 type StockSearch = { filter?: StockFilterState["status"] };
 
 const statusFromFilter: Record<Exclude<StockSearch["filter"], undefined>, StockFilterState["status"]> = {
-  low: "LOW",
   loaned: "LOANED",
   overdue: "OVERDUE",
   active: "ACTIVE",
@@ -27,7 +26,6 @@ const statusFromFilter: Record<Exclude<StockSearch["filter"], undefined>, StockF
   inactive: "INACTIVE",
 };
 const statusToFilter: Record<StockFilterState["status"], StockSearch["filter"] | undefined> = {
-  LOW: "low",
   LOANED: "loaned",
   OVERDUE: "overdue",
   ACTIVE: "active",
@@ -130,7 +128,6 @@ function AdminStockIndex() {
         <StockFilters
           value={filters}
           onChange={handleChangeFilter}
-          lowItemIds={lowIds}
           loanedItemIds={loanedIds}
           overdueItemIds={overdueIds}
         />

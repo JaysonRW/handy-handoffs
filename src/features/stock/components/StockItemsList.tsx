@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useStockStore, lowStockItems, overdueLoans, openLoansForItem } from "../store";
+import { useStockStore, overdueLoans, openLoansForItem } from "../store";
 import { StockItemCard } from "./StockItemCard";
 import type { StockFilterState } from "./StockFilters";
 import type { StockItem } from "../types";
@@ -16,8 +16,7 @@ export function StockItemsList({
   const lastError = useStockStore((s) => s.lastError);
   const hydrated = useStockStore((s) => s.hydratedFromServerAt);
 
-  const { lowIds, loanedIds, overdueIds, rows } = useMemo(() => {
-    const low = new Set(lowStockItems(items).map((i) => i.id));
+  const { loanedIds, overdueIds, rows } = useMemo(() => {
     const overdueLoansArr = overdueLoans(loans);
     const overdue = new Set(overdueLoansArr.map((l) => l.itemId));
     const loaned = new Set(loans.filter((l) => !l.returnedAt).map((l) => l.itemId));
@@ -33,8 +32,7 @@ export function StockItemsList({
           if (i.active) return false;
           break;
         case "LOW":
-          if (!low.has(i.id)) return false;
-          break;
+          return false;
         case "LOANED":
           if (!loaned.has(i.id)) return false;
           break;
@@ -52,7 +50,7 @@ export function StockItemsList({
       );
     });
 
-    return { lowIds: low, loanedIds: loaned, overdueIds: overdue, rows: filtered };
+    return { loanedIds: loaned, overdueIds: overdue, rows: filtered };
   }, [items, loans, filters]);
 
   if (!hydrated) {
@@ -86,7 +84,6 @@ export function StockItemsList({
           key={item.id}
           item={item}
           openLoans={openLoansForItem(loans, item.id)}
-          isLowStock={lowIds.has(item.id)}
           isOverdue={overdueIds.has(item.id)}
           onOpenEdit={onOpenEdit}
         />
@@ -99,7 +96,7 @@ export function useFilterIndexSets() {
   const items = useStockStore((s) => s.items);
   const loans = useStockStore((s) => s.loans);
   return useMemo(() => {
-    const lowIds = new Set(lowStockItems(items).map((i) => i.id));
+    const lowIds = new Set<string>();
     const overdueIds = new Set(overdueLoans(loans).map((l) => l.itemId));
     const loanedIds = new Set(loans.filter((l) => !l.returnedAt).map((l) => l.itemId));
     return { lowIds, overdueIds, loanedIds };

@@ -136,11 +136,9 @@ export function NewItemDialog({
       const draft: ItemDraft = {
         ...form,
         sku: form.sku.trim(),
+        unit: DEFAULT_STOCK_UNIT,
         qtyInStock: Math.max(0, qty),
-        minStockLevel:
-          form.minStockLevel === undefined || form.minStockLevel === null || (form.minStockLevel as unknown as string) === ""
-            ? undefined
-            : Number(form.minStockLevel),
+        minStockLevel: undefined,
         location: form.location?.trim() || undefined,
         photoUrl: form.photoUrl?.trim() || undefined,
         nfcTagId: form.nfcTagId?.trim() || undefined,
@@ -263,15 +261,6 @@ export function NewItemDialog({
                 </label>
 
                 <label>
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground">Unit (UN, CX, KG, MT…)</span>
-                  <input
-                    className="input mt-1"
-                    value={form.unit}
-                    onChange={(e) => update("unit", e.target.value)}
-                    maxLength={8}
-                  />
-                </label>
-                <label>
                   <span className="text-xs uppercase tracking-wider text-muted-foreground">Qty in stock</span>
                   <input
                     type="number"
@@ -282,18 +271,6 @@ export function NewItemDialog({
                   />
                 </label>
 
-                <label>
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground">Min stock level (optional)</span>
-                  <input
-                    type="number"
-                    className="input mt-1"
-                    min={0}
-                    value={form.minStockLevel ?? ""}
-                    onChange={(e) =>
-                      update("minStockLevel", e.target.value === "" ? undefined : Number(e.target.value))
-                    }
-                  />
-                </label>
                 <label>
                   <span className="text-xs uppercase tracking-wider text-muted-foreground">Location</span>
                   <input

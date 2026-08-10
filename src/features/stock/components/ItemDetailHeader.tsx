@@ -1,25 +1,49 @@
-import { Edit2, AlertTriangle, ToggleLeft } from "lucide-react";
+import { Edit2, ToggleLeft, Printer, CheckCircle2 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { StockItem } from "../types";
 import { useStockStore } from "../store";
+import { buildItemDeepLink, generateQrDataUrl, triggerPrintSticker } from "../lib/qr";
 import { StockQrCodeView } from "./StockQrCodeView";
 
 export function ItemDetailHeader({
   item,
   actorId,
   openLoans,
-  isLowStock,
   isOverdue,
   onEdit,
 }: {
   item: StockItem;
   actorId: string;
   openLoans: number;
-  isLowStock: boolean;
   isOverdue: boolean;
   onEdit?: () => void;
 }) {
   const markInactive = useStockStore((s) => s.markItemInactive);
+  const [quickPrintLoading, setQuickPrintLoading] = useState(false);
+  const [printedFlash, setPrintedFlash] = useState(false);
+  const quickQrDataRef = useRef<string | null>(null);
+  const qrDeepLinkRef = useRef<string>(buildItemDeepLink(item.id));
+
+  useEffect(() => {
+    qrDeepLinkRef.current = buildItemDeepLink(item.id);
+    quickQrDataRef.current = null;
+  }, [item.id]);
+
+  const handleQuickPrint = useCallback(async () => {
+    if (quickPrintLoading) return;
+    try {
+      setQuickPrintLoading(true);
+      if (!quickQrDataRef.current) {
+        quickQrDataRef.current = await generateQrDataUrl(qrDeepLinkRef.current, 600);
+      }
+      triggerPrintSticker(item, quickQrDataRef.current);
+      setPrintedFlash(true);
+      window.setTimeout(() => setPrintedFlash(false), 1600);
+    } finally {
+      setQuickPrintLoading(false);
+    }
+  }, [quickPrintLoading, item]);
 
   return (
     <>
@@ -28,7 +52,7 @@ export function ItemDetailHeader({
             <div className="flex flex-wrap items-start gap-2 justify-between">
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                  SKU {item.sku} · {item.category === "TOOLS" ? "Tool" : item.category === "CONSUMABLES" ? "Consumable" : "Other"} · unit {item.unit}
+                  SKU {item.sku} · {item.category === "TOOLS" ? "Tool" : item.category === "CONSUMABLES" ? "Consumable" : "Other"}
                 </p>
                 <h2 className="mt-1 text-2xl font-black tracking-tight truncate">{item.name}</h2>
               </div>
@@ -36,14 +60,9 @@ export function ItemDetailHeader({
                 {!item.active ? (
                   <span className="chip bg-muted/50 text-muted-foreground">Inactive</span>
                 ) : null}
-                {isLowStock ? (
-                  <span className="chip border-accent/40 bg-accent/15 text-accent-foreground">
-                    <AlertTriangle className="size-3" /> Low stock
-                  </span>
-                ) : null}
                 {isOverdue ? (
                   <span className="chip border-[color:var(--color-p1)]/40 bg-[color:var(--color-p1)]/15 text-[color:var(--color-p1)]">
-                    <AlertTriangle className="size-3" /> Overdue loan
+                    Overdue loan
                   </span>
                 ) : openLoans > 0 ? (
                   <span className="chip border-primary/30 bg-primary/10 text-primary">
@@ -57,21 +76,11 @@ export function ItemDetailHeader({
               <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">{item.description}</p>
             ) : null}
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
               <div>
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">In stock</p>
                 <p className="mt-0.5 text-2xl font-black tabular-nums">
                   {item.qtyInStock} <span className="text-sm font-medium text-muted-foreground">{item.unit}</span>
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Min. level</p>
-                <p className="mt-0.5 text-lg font-semibold tabular-nums">
-                  {item.minStockLevel === undefined || item.minStockLevel === null ? (
-                    <span className="text-muted-foreground">—</span>
-                  ) : (
-                    `${item.minStockLevel} ${item.unit}`
-                  )}
                 </p>
               </div>
               <div>
@@ -83,7 +92,16 @@ export function ItemDetailHeader({
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              <StockQrCodeView item={item} />
+              <Button
+                onClick={handleQuickPrint}
+                variant="default"
+                disabled={quickPrintLoading}
+                className={printedFlash ? "ring-2 ring-success/60" : ""}
+              >
+                {printedFlash ? <CheckCircle2 className="size-4" /> : <Printer className="size-4" />}
+                {printedFlash ? "Printed" : quickPrintLoading ? "Preparing…" : "Print sticker"}
+              </Button>
+              <StockQrCodeView item={item} mode="buttonDialog" buttonVariant="secondary" />
               <button
                 type="button"
                 onClick={onEdit}
