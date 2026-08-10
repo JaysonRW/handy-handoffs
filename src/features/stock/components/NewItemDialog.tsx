@@ -1,25 +1,33 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Edit2, Plus, Repeat2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useStockStore } from "../store";
 import { nanoid } from "@/lib/id";
 import type { ItemDraft } from "../store";
-import type { StockCategory } from "../types";
+import type { StockCategory, StockItem } from "../types";
 import { DEFAULT_STOCK_UNIT } from "../types";
 
 export function NewItemDialog({
   open,
   onOpenChange,
   actorId,
+  editTarget,
+  onEditSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   actorId: string;
+  editTarget?: StockItem | null;
+  onEditSaved?: () => void;
 }) {
   const items = useStockStore((s) => s.items);
   const registerItem = useStockStore((s) => s.registerItem);
+  const editItem = useStockStore((s) => s.editItem);
+  const isEdit = !!editTarget;
 
   const nextSku = useMemo(() => {
+    if (isEdit) return editTarget.sku;
     const nums = items
       .map((i) => i.sku)
       .map((s) => /(\d+)/.exec(s)?.[1])
@@ -29,22 +37,49 @@ export function NewItemDialog({
     const next = nums.length === 0 ? 1 : Math.max(...nums) + 1;
     const prefix = "PMTMS";
     return `${prefix}-${String(next).padStart(4, "0")}`;
-  }, [items]);
+  }, [items, isEdit, editTarget]);
 
-  const [form, setForm] = useState<ItemDraft>(() => ({
-    sku: nextSku,
-    name: "",
-    description: "",
-    category: "TOOLS",
-    unit: DEFAULT_STOCK_UNIT,
-    qtyInStock: 1,
-    minStockLevel: undefined,
-    location: "",
-    photoUrl: "",
-    nfcTagId: "",
-    qrCodeId: `QR-${nextSku}`,
-  }));
+  function buildInitialForm(): ItemDraft {
+    if (isEdit) {
+      return {
+        sku: editTarget.sku,
+        name: editTarget.name,
+        description: editTarget.description ?? "",
+        category: editTarget.category,
+        unit: editTarget.unit,
+        qtyInStock: editTarget.qtyInStock,
+        minStockLevel: editTarget.minStockLevel,
+        location: editTarget.location ?? "",
+        photoUrl: editTarget.photoUrl ?? "",
+        nfcTagId: editTarget.nfcTagId ?? "",
+        qrCodeId: editTarget.qrCodeId,
+      };
+    }
+    return {
+      sku: nextSku,
+      name: "",
+      description: "",
+      category: "TOOLS",
+      unit: DEFAULT_STOCK_UNIT,
+      qtyInStock: 1,
+      minStockLevel: undefined,
+      location: "",
+      photoUrl: "",
+      nfcTagId: "",
+      qrCodeId: `QR-${nextSku}`,
+    };
+  }
+
+  const [form, setForm] = useState<ItemDraft>(() => buildInitialForm());
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setForm(buildInitialForm());
+      setError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editTarget?.id]);
 
   function update<K extends keyof ItemDraft>(k: K, v: ItemDraft[K]) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -82,13 +117,21 @@ export function NewItemDialog({
       setError("Qty in stock must be a positive number or zero.");
       return;
     }
+    const skuLowerCase = form.sku.trim().toLowerCase();
+    const skuClash = items.some(
+      (i) => i.id !== (editTarget?.id ?? "") && i.sku.toLowerCase() === skuLowerCase,
+    );
+    if (skuClash) {
+      setError("This SKU already exists on another item.");
+      return;
+    }
     try {
       const draft: ItemDraft = {
         ...form,
         sku: form.sku.trim(),
         qtyInStock: Math.max(0, qty),
         minStockLevel:
-          form.minStockLevel === undefined || form.minStockLevel === null || form.minStockLevel === ""
+          form.minStockLevel === undefined || form.minStockLevel === null || (form.minStockLevel as unknown as string) === ""
             ? undefined
             : Number(form.minStockLevel),
         location: form.location?.trim() || undefined,
@@ -96,9 +139,23 @@ export function NewItemDialog({
         nfcTagId: form.nfcTagId?.trim() || undefined,
         qrCodeId: (form.qrCodeId ?? `QR-${nanoid(10).toUpperCase()}`).trim(),
       };
-      registerItem(draft, actorId);
+      if (isEdit) {
+        const res = editItem(editTarget.id, draft, actorId);
+        if (!res) {
+          setError("Could not update item. SKU clash or item is inactive.");
+          return;
+        }
+      } else {
+        registerItem(draft, actorId);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return;
+    }
+
+    if (isEdit) {
+      onOpenChange(false);
+      onEditSaved?.();
       return;
     }
     if (andAnother) {
@@ -112,9 +169,21 @@ export function NewItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>New stock item</DialogTitle>
+          <DialogTitle>
+            {isEdit ? (
+              <span className="inline-flex items-center gap-2">
+                <Edit2 className="size-5" /> Edit stock item
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-2">
+                <Plus className="size-5" /> New stock item
+              </span>
+            )}
+          </DialogTitle>
           <DialogDescription>
-            Add a tool, piece of equipment, or consumable. A unique QR code ID is generated automatically.
+            {isEdit
+              ? "Update item metadata, quantity, location or IDs."
+              : "Add a tool, piece of equipment, or consumable. A unique QR code ID is generated automatically."}
           </DialogDescription>
         </DialogHeader>
 
@@ -234,12 +303,23 @@ export function NewItemDialog({
         <DialogFooter className="mt-5">
           <button
             type="button"
-            onClick={() => handleSave(true)}
-            className={buttonVariants({ variant: "secondary" })}
+            onClick={() => onOpenChange(false)}
+            className={buttonVariants({ variant: "ghost" })}
           >
-            Save & another
+            Cancel
           </button>
-          <Button onClick={() => handleSave(false)}>Save item</Button>
+          {!isEdit ? (
+            <button
+              type="button"
+              onClick={() => handleSave(true)}
+              className={buttonVariants({ variant: "secondary" })}
+            >
+              <Repeat2 className="size-4" /> Save & another
+            </button>
+          ) : null}
+          <Button onClick={() => handleSave(false)}>
+            {isEdit ? <><Edit2 className="size-4" /> Save changes</> : <><Plus className="size-4" /> Save item</>}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

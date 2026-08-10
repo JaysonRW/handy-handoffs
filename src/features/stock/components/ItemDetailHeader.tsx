@@ -12,12 +12,14 @@ export function ItemDetailHeader({
   openLoans,
   isLowStock,
   isOverdue,
+  onEdit,
 }: {
   item: StockItem;
   actorId: string;
   openLoans: number;
   isLowStock: boolean;
   isOverdue: boolean;
+  onEdit?: () => void;
 }) {
   const markInactive = useStockStore((s) => s.markItemInactive);
   const [qrOpen, setQrOpen] = useState(false);
@@ -127,9 +129,9 @@ export function ItemDetailHeader({
               </Button>
               <button
                 type="button"
-                disabled
-                className={buttonVariants({ variant: "secondary" }) + " cursor-not-allowed opacity-60"}
-                title="Coming soon: edit item in-place"
+                onClick={onEdit}
+                className={buttonVariants({ variant: "secondary" })}
+                disabled={!onEdit || !item.active}
               >
                 <Edit2 className="size-4" /> Edit
               </button>

@@ -55,10 +55,11 @@ export interface StockSnapshot {
   loans: StockLoan[];
 }
 
-export type StockPendingKind = "CREATE_ITEM" | "MOVEMENT" | "LOAN_OPEN" | "LOAN_CLOSE";
+export type StockPendingKind = "CREATE_ITEM" | "UPDATE_ITEM" | "MOVEMENT" | "LOAN_OPEN" | "LOAN_CLOSE";
 
 export type StockPendingUpsert =
   | { kind: "CREATE_ITEM"; key: string; item: StockItem }
+  | { kind: "UPDATE_ITEM"; key: string; item: StockItem }
   | { kind: "MOVEMENT"; key: string; movement: StockMovement }
   | { kind: "LOAN_OPEN"; key: string; loan: StockLoan }
   | { kind: "LOAN_CLOSE"; key: string; loanId: string; returnedAt: string; actorId: string };

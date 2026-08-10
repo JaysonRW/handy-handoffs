@@ -184,7 +184,7 @@ async function syncStock(_trigger: "auto" | "manual") {
   let failed = 0;
   for (const p of pending) {
     try {
-      if (p.kind === "CREATE_ITEM") {
+      if (p.kind === "CREATE_ITEM" || p.kind === "UPDATE_ITEM") {
         await upsertStockItem(p.item);
         stockStore.markUpsertDone(p.key);
       } else if (p.kind === "MOVEMENT") {

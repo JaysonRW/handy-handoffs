@@ -1,11 +1,12 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { useStockStore, lowStockItems, overdueLoans, openLoansForItem } from "@/features/stock/store";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ItemDetailHeader } from "@/features/stock/components/ItemDetailHeader";
 import { ItemActions } from "@/features/stock/components/ItemActions";
 import { MovementHistory } from "@/features/stock/components/MovementHistory";
 import { LoanHistory } from "@/features/stock/components/LoanHistory";
+import { NewItemDialog } from "@/features/stock/components/NewItemDialog";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
@@ -22,6 +23,7 @@ function AdminStockItemDetail() {
   const loans = useStockStore((s) => s.loans);
 
   const item = items.find((i) => i.id === itemId);
+  const [editOpen, setEditOpen] = useState(false);
 
   const { itemMovements, itemLoans, openLoans, isLowStock, isOverdue } = useMemo(() => {
     if (!item) return { itemMovements: [], itemLoans: [], openLoans: [], isLowStock: false, isOverdue: false };
@@ -57,6 +59,7 @@ function AdminStockItemDetail() {
           openLoans={openLoans.length}
           isLowStock={isLowStock}
           isOverdue={isOverdue}
+          onEdit={() => setEditOpen(true)}
         />
 
         <ItemActions item={item} loans={itemLoans} actorId={ACTOR_ID} />
@@ -70,6 +73,13 @@ function AdminStockItemDetail() {
           </div>
         </div>
       </div>
+
+      <NewItemDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        actorId={ACTOR_ID}
+        editTarget={item}
+      />
     </AdminShell>
   );
 }

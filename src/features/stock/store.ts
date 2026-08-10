@@ -33,6 +33,7 @@ type StockState = {
   getPendingUpserts: () => StockPendingUpsert[];
 
   registerItem: (draft: ItemDraft, actorId: string) => { item: StockItem; upsertKey: string };
+  editItem: (itemId: string, draft: Partial<ItemDraft>, actorId: string) => { item: StockItem; upsertKey: string } | null;
   markItemInactive: (itemId: string, actorId: string) => string | null;
 
   recordMovement: (itemId: string, draft: MovementDraft, actorId: string) => { movement: StockMovement; upsertKey: string } | null;
@@ -168,11 +169,71 @@ export const useStockStore = create<StockState>()(
         return { item, upsertKey: key };
       },
 
+      editItem: (itemId, patch, actorId) => {
+        const state = get();
+        const existing = state.items.find((x) => x.id === itemId);
+        if (!existing) return null;
+        if (!existing.active) return null;
+
+        let nextSku = existing.sku;
+        let nextName = existing.name;
+        if (patch.sku !== undefined) {
+          if (patch.sku.trim().length === 0) return null;
+          nextSku = patch.sku.trim();
+        }
+        if (patch.name !== undefined) {
+          if (patch.name.trim().length === 0) return null;
+          nextName = patch.name.trim();
+        }
+
+        if (nextSku !== existing.sku) {
+          const skuClash = state.items.some(
+            (i) => i.id !== existing.id && i.sku === nextSku,
+          );
+          if (skuClash) return null;
+        }
+
+        const d = now();
+        const updated: StockItem = {
+          ...existing,
+          sku: nextSku,
+          name: nextName,
+          description: patch.description !== undefined ? patch.description : existing.description,
+          category: patch.category ?? existing.category,
+          unit: patch.unit ?? existing.unit,
+          qtyInStock: patch.qtyInStock !== undefined ? Math.max(0, patch.qtyInStock) : existing.qtyInStock,
+          minStockLevel: patch.minStockLevel !== undefined ? patch.minStockLevel : existing.minStockLevel,
+          location: patch.location !== undefined ? patch.location : existing.location,
+          photoUrl: patch.photoUrl !== undefined ? patch.photoUrl : existing.photoUrl,
+          qrCodeId: patch.qrCodeId !== undefined && patch.qrCodeId.trim().length > 0
+            ? patch.qrCodeId.trim()
+            : existing.qrCodeId,
+          nfcTagId: patch.nfcTagId !== undefined ? patch.nfcTagId : existing.nfcTagId,
+          updatedAt: iso(d),
+          synced: false,
+        };
+
+        const createPending = state.pendingUpserts.includes(stockPendingKey("CREATE_ITEM", existing.id));
+        const kind: "CREATE_ITEM" | "UPDATE_ITEM" = createPending ? "CREATE_ITEM" : "UPDATE_ITEM";
+        const key = stockPendingKey(kind, existing.id);
+
+        set((s) => ({
+          items: s.items
+            .map((x) => (x.id === existing.id ? updated : x))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+          pendingUpserts: Array.from(new Set([...s.pendingUpserts, key])),
+          lastError: undefined,
+        }));
+        return { item: updated, upsertKey: key };
+      },
+
       markItemInactive: (itemId, _actorId) => {
         const state = get();
         const item = state.items.find((x) => x.id === itemId);
         if (!item) return null;
-        const key = stockPendingKey("CREATE_ITEM", item.id);
+        const createPending = state.pendingUpserts.includes(stockPendingKey("CREATE_ITEM", item.id));
+        const kind: "CREATE_ITEM" | "UPDATE_ITEM" = createPending ? "CREATE_ITEM" : "UPDATE_ITEM";
+        const key = stockPendingKey(kind, item.id);
         set((s) => ({
           items: s.items.map((x) =>
             x.id === itemId ? { ...x, active: false, updatedAt: iso(now()), synced: false } : x,
