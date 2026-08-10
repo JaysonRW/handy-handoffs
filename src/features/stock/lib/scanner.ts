@@ -9,6 +9,9 @@ export interface QrScannerState {
   clear: () => void;
   start: (facingMode?: CameraFacingMode) => Promise<void>;
   stop: () => Promise<void>;
+  pause: () => void;
+  resume: () => void;
+  isPaused: boolean;
   isSupported: boolean;
   hasPermission: boolean | "unknown";
   scanFromFile: (file: File) => Promise<string | null>;
@@ -94,6 +97,7 @@ export function useQrScanner(
   const rafIdRef = useRef<number | null>(null);
   const lastDetectAtRef = useRef(0);
   const isScanningRef = useRef(false);
+  const isPausedRef = useRef(false);
   const lastStartTsRef = useRef(0);
 
   const [status, setStatus] = useState<QrScannerState["status"]>("idle");
@@ -101,6 +105,7 @@ export function useQrScanner(
   const [detected, setDetected] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | "unknown">("unknown");
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
   const [canFileFallback] = useState<boolean>(() => supportsBarcodeDetector());
 
   const isSupported = supportsGetUserMedia();
@@ -151,6 +156,7 @@ export function useQrScanner(
 
   function cleanupStream() {
     isScanningRef.current = false;
+    isPausedRef.current = false;
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
@@ -183,6 +189,12 @@ export function useQrScanner(
     const video = videoElRef.current;
     const canvas = canvasElRef.current;
     if (!video || !canvas || !isScanningRef.current) return;
+    if (isPausedRef.current) {
+      rafIdRef.current = requestAnimationFrame(() => {
+        void detectLoopFrame(intervalMs, qrboxPx);
+      });
+      return;
+    }
     try {
       const now = performance.now();
       if (now - lastDetectAtRef.current >= intervalMs && video.readyState >= 2) {
@@ -241,6 +253,8 @@ export function useQrScanner(
       }
 
       cleanupStream();
+      isPausedRef.current = false;
+      setIsPaused(false);
 
       const idealWidth = 1280;
       const idealHeight = 720;
@@ -308,7 +322,21 @@ export function useQrScanner(
 
   async function stop() {
     cleanupStream();
+    setIsPaused(false);
     setStatus("stopped");
+  }
+
+  function pause() {
+    if (!isScanningRef.current) return;
+    isPausedRef.current = true;
+    setIsPaused(true);
+  }
+
+  function resume() {
+    if (!isScanningRef.current) return;
+    lastDetectAtRef.current = 0;
+    isPausedRef.current = false;
+    setIsPaused(false);
   }
 
   function clear() {
@@ -341,6 +369,9 @@ export function useQrScanner(
     clear,
     start,
     stop,
+    pause,
+    resume,
+    isPaused,
     isSupported,
     hasPermission,
     scanFromFile,

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/layout/AdminShell";
 import {
   ArrowLeft,
@@ -13,6 +13,9 @@ import {
   Info,
   X,
   Camera as CameraIconPhoto,
+  ExternalLink,
+  Play as PlayIcon,
+  Package,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -28,8 +31,10 @@ import {
   useQrScanner,
   type CameraFacingMode,
 } from "@/features/stock/lib/scanner";
-import { useStockStore } from "@/features/stock/store";
+import { useStockStore, openLoansForItem } from "@/features/stock/store";
+import type { StockItem } from "@/features/stock/types";
 import { buildItemDeepLink } from "@/features/stock/lib/qr";
+import { ItemActions } from "@/features/stock/components/ItemActions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/stock/scan")({
@@ -38,10 +43,12 @@ export const Route = createFileRoute("/admin/stock/scan")({
 });
 
 const SCANNER_EL_ID = "pmtms-qr-reader-scan";
+const ACTOR_ID = "u_admin";
 
 function AdminStockScan() {
   const navigate = useNavigate({ from: "/admin/stock/scan" });
   const items = useStockStore((s) => s.items);
+  const loans = useStockStore((s) => s.loans);
   const hydratePromiseRef = useRef<Promise<unknown> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -52,6 +59,9 @@ function AdminStockScan() {
     clear,
     start,
     stop,
+    pause,
+    resume,
+    isPaused,
     isSupported,
     hasPermission,
     scanFromFile,
@@ -59,10 +69,17 @@ function AdminStockScan() {
   } = useQrScanner(SCANNER_EL_ID, { fps: 10, qrboxSizePx: 260 });
 
   const [facingMode, setFacingMode] = useState<CameraFacingMode>("environment");
-  const [navigating, setNavigating] = useState(false);
   const [lastInvalid, setLastInvalid] = useState<string | null>(null);
   const [pendingStart, setPendingStart] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [detectedItem, setDetectedItem] = useState<StockItem | null>(null);
+  const [quickDialogOpen, setQuickDialogOpen] = useState(false);
+
+  const openLoans = useMemo(() => {
+    if (!detectedItem) return [];
+    const all = loans.filter((l) => l.itemId === detectedItem.id);
+    return openLoansForItem(all, detectedItem.id);
+  }, [loans, detectedItem]);
 
   useEffect(() => {
     if (status !== "running") return;
@@ -86,8 +103,8 @@ function AdminStockScan() {
       setLastInvalid(detected);
       return;
     }
-    const exists = items.some((i) => i.id === parsed.itemId);
-    if (!exists) {
+    let found = items.find((i) => i.id === parsed.itemId);
+    if (!found) {
       const hydrate = useStockStore.getState();
       if ("hydrateFromServer" in hydrate && typeof hydrate.hydrateFromServer === "function") {
         if (!hydratePromiseRef.current) {
@@ -95,14 +112,9 @@ function AdminStockScan() {
             .then(() => (hydrate as any).hydrateFromServer("qr-miss-fallback"))
             .then(() => {
               const items2 = useStockStore.getState().items;
-              const exist2 = items2.some((i) => i.id === parsed.itemId);
-              if (exist2) {
-                setNavigating(true);
-                navigate({
-                  to: "/admin/stock/$itemId",
-                  params: { itemId: parsed.itemId },
-                  replace: false,
-                });
+              const found2 = items2.find((i) => i.id === parsed.itemId);
+              if (found2) {
+                openQuickDialogFor(found2);
               } else {
                 setLastInvalid(`${parsed.itemId} (not in stock list — try refreshing)`);
               }
@@ -116,13 +128,33 @@ function AdminStockScan() {
       }
       return;
     }
-    setNavigating(true);
+    openQuickDialogFor(found);
+  }, [detected, items, loans]);
+
+  function openQuickDialogFor(item: StockItem) {
+    pause();
+    clear();
+    setLastInvalid(null);
+    setDetectedItem(item);
+    setQuickDialogOpen(true);
+  }
+
+  function handleScanAnother() {
+    setQuickDialogOpen(false);
+    setDetectedItem(null);
+    setLastInvalid(null);
+    resume();
+  }
+
+  function handleOpenFullDetail() {
+    if (!detectedItem) return;
+    setQuickDialogOpen(false);
     navigate({
       to: "/admin/stock/$itemId",
-      params: { itemId: parsed.itemId },
+      params: { itemId: detectedItem.id },
       replace: false,
     });
-  }, [detected, items, navigate]);
+  }
 
   function handleRetryPerm() {
     clear();
@@ -144,18 +176,7 @@ function AdminStockScan() {
       setLastInvalid("No items in stock yet — create at least one item first.");
       return;
     }
-    const deep = buildItemDeepLink(first.id);
-    clear();
-    setLastInvalid(null);
-    setTimeout(() => {
-      setNavigating(true);
-      navigate({
-        to: "/admin/stock/$itemId",
-        params: { itemId: first.id },
-        replace: false,
-      });
-    }, 250);
-    void deep;
+    openQuickDialogFor(first);
   }
 
   async function handlePickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -324,7 +345,7 @@ function AdminStockScan() {
               </>
             ) : status === "idle" ? (
               <>
-                <Button onClick={() => setPendingStart(true)} disabled={!isSupported || navigating}>
+                <Button onClick={() => setPendingStart(true)} disabled={!isSupported}>
                   <Camera className="size-4" /> Start camera
                 </Button>
                 {canFileFallback ? (
@@ -383,12 +404,12 @@ function AdminStockScan() {
             </div>
           ) : null}
 
-          {detected && !lastInvalid && !navigating ? (
+          {detected && !lastInvalid ? (
             <div className="mt-4 surface-card border border-success/40 bg-success/5 p-3 rounded-lg text-xs text-success">
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="size-4 shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                  <p className="font-semibold">QR recognized — navigating…</p>
+                  <p className="font-semibold">QR recognized — opening quick actions…</p>
                   <p className="mt-0.5 break-all font-mono text-[11px] opacity-90">{detected}</p>
                 </div>
               </div>
@@ -396,6 +417,72 @@ function AdminStockScan() {
           ) : null}
         </div>
       </div>
+
+      <Dialog open={quickDialogOpen && !!detectedItem} onOpenChange={(o) => {
+        if (!o) {
+          handleScanAnother();
+        }
+      }}>
+        <DialogContent className="sm:max-w-xl">
+          {detectedItem ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Package className="size-5 text-primary" /> {detectedItem.name}
+                </DialogTitle>
+                <DialogDescription>
+                  <span className="inline-flex flex-wrap items-center gap-2 text-xs">
+                    <span>SKU <span className="font-mono">{detectedItem.sku}</span></span>
+                    <span>·</span>
+                    <span>
+                      In stock <span className="font-mono font-semibold">{detectedItem.qtyInStock} {detectedItem.unit}</span>
+                    </span>
+                    {openLoans.length > 0 ? (
+                      <>
+                        <span>·</span>
+                        <span className="chip border-[color:var(--color-p1)]/40 bg-[color:var(--color-p1)]/10 text-[color:var(--color-p1)] text-[10px] py-0 px-2">
+                          {openLoans.length} open loan{openLoans.length > 1 ? "s" : ""}
+                        </span>
+                      </>
+                    ) : null}
+                    {detectedItem.location ? (
+                      <>
+                        <span>·</span>
+                        <span>📍 {detectedItem.location}</span>
+                      </>
+                    ) : null}
+                    {isPaused ? (
+                      <>
+                        <span>·</span>
+                        <span className="chip bg-muted text-muted-foreground text-[10px] py-0 px-2">
+                          <PlayIcon className="size-2.5 mr-1 inline align-text-bottom" /> Scanner paused
+                        </span>
+                      </>
+                    ) : null}
+                  </span>
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="max-h-[calc(92dvh-220px)] overflow-y-auto -mx-6 px-6 mt-2">
+                <ItemActions
+                  item={detectedItem}
+                  loans={loans.filter((l) => l.itemId === detectedItem.id)}
+                  actorId={ACTOR_ID}
+                />
+              </div>
+
+              <DialogFooter className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2 w-full sm:w-auto">
+                <Button variant="secondary" onClick={handleScanAnother}>
+                  <RotateCcw className="size-4" /> Scan another
+                </Button>
+                <Button onClick={handleOpenFullDetail}>
+                  <ExternalLink className="size-4" /> Open full details
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
         <DialogContent className="sm:max-w-lg">

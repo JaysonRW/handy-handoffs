@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Edit2, Plus, Repeat2 } from "lucide-react";
+import { Edit2, Plus, Repeat2, ArrowLeft, Check, PackagePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useStockStore } from "../store";
@@ -7,6 +7,7 @@ import { nanoid } from "@/lib/id";
 import type { ItemDraft } from "../store";
 import type { StockCategory, StockItem } from "../types";
 import { DEFAULT_STOCK_UNIT } from "../types";
+import { StockQrCodeView } from "./StockQrCodeView";
 
 export function NewItemDialog({
   open,
@@ -25,6 +26,10 @@ export function NewItemDialog({
   const registerItem = useStockStore((s) => s.registerItem);
   const editItem = useStockStore((s) => s.editItem);
   const isEdit = !!editTarget;
+
+  type DialogMode = "form" | "qrcode";
+  const [mode, setMode] = useState<DialogMode>("form");
+  const [savedItem, setSavedItem] = useState<StockItem | null>(null);
 
   const nextSku = useMemo(() => {
     if (isEdit) return editTarget.sku;
@@ -77,6 +82,8 @@ export function NewItemDialog({
     if (open) {
       setForm(buildInitialForm());
       setError(null);
+      setMode("form");
+      setSavedItem(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editTarget?.id]);
@@ -146,7 +153,12 @@ export function NewItemDialog({
           return;
         }
       } else {
-        registerItem(draft, actorId);
+        const created = registerItem(draft, actorId);
+        if (!andAnother) {
+          setSavedItem(created.item);
+          setMode("qrcode");
+          return;
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -169,157 +181,203 @@ export function NewItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>
-            {isEdit ? (
-              <span className="inline-flex items-center gap-2">
-                <Edit2 className="size-5" /> Edit stock item
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2">
-                <Plus className="size-5" /> New stock item
-              </span>
-            )}
-          </DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? "Update item metadata, quantity, location or IDs."
-              : "Add a tool, piece of equipment, or consumable. A unique QR code ID is generated automatically."}
-          </DialogDescription>
+          {mode === "form" ? (
+            <>
+              <DialogTitle>
+                {isEdit ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Edit2 className="size-5" /> Edit stock item
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2">
+                    <Plus className="size-5" /> New stock item
+                  </span>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                {isEdit
+                  ? "Update item metadata, quantity, location or IDs."
+                  : "Add a tool, piece of equipment, or consumable. A unique QR code ID is generated automatically."}
+              </DialogDescription>
+            </>
+          ) : (
+            <>
+              <DialogTitle>
+                <span className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                  <Check className="size-5" /> Item saved · Step 2/2
+                </span>
+              </DialogTitle>
+              <DialogDescription>
+                Print the QR sticker now and glue it to the physical item. You can also print it later from the item detail page.
+              </DialogDescription>
+            </>
+          )}
         </DialogHeader>
 
-        <div className="grid gap-3 sm:grid-cols-2 mt-2">
-          <label className="sm:col-span-1">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">SKU</span>
-            <input
-              className="input mt-1"
-              value={form.sku}
-              onChange={(e) => update("sku", e.target.value)}
-              maxLength={64}
-            />
-          </label>
-          <label className="sm:col-span-1">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Category</span>
-            <select
-              className="input mt-1"
-              value={form.category}
-              onChange={(e) => update("category", e.target.value as StockCategory)}
-            >
-              <option value="TOOLS">Tools / Equipment</option>
-              <option value="CONSUMABLES">Consumables (lamp, bags…)</option>
-              <option value="OTHER">Other</option>
-            </select>
-          </label>
+        <div className="max-h-[calc(92dvh-160px)] overflow-y-auto -mx-6 px-6">
+          {mode === "form" ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 mt-2">
+                <label className="sm:col-span-1">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">SKU</span>
+                  <input
+                    className="input mt-1"
+                    value={form.sku}
+                    onChange={(e) => update("sku", e.target.value)}
+                    maxLength={64}
+                  />
+                </label>
+                <label className="sm:col-span-1">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">Category</span>
+                  <select
+                    className="input mt-1"
+                    value={form.category}
+                    onChange={(e) => update("category", e.target.value as StockCategory)}
+                  >
+                    <option value="TOOLS">Tools / Equipment</option>
+                    <option value="CONSUMABLES">Consumables (lamp, bags…)</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </label>
 
-          <label className="sm:col-span-2">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Name</span>
-            <input
-              className="input mt-1"
-              value={form.name}
-              onChange={(e) => update("name", e.target.value)}
-              placeholder="e.g. Hammer 23mm claw"
-              maxLength={140}
-              autoFocus
-            />
-          </label>
+                <label className="sm:col-span-2">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">Name</span>
+                  <input
+                    className="input mt-1"
+                    value={form.name}
+                    onChange={(e) => update("name", e.target.value)}
+                    placeholder="e.g. Hammer 23mm claw"
+                    maxLength={140}
+                    autoFocus
+                  />
+                </label>
 
-          <label className="sm:col-span-2">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Description (optional)</span>
-            <input
-              className="input mt-1"
-              value={form.description ?? ""}
-              onChange={(e) => update("description", e.target.value)}
-              maxLength={240}
-            />
-          </label>
+                <label className="sm:col-span-2">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">Description (optional)</span>
+                  <input
+                    className="input mt-1"
+                    value={form.description ?? ""}
+                    onChange={(e) => update("description", e.target.value)}
+                    maxLength={240}
+                  />
+                </label>
 
-          <label>
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Unit (UN, CX, KG, MT…)</span>
-            <input
-              className="input mt-1"
-              value={form.unit}
-              onChange={(e) => update("unit", e.target.value)}
-              maxLength={8}
-            />
-          </label>
-          <label>
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Qty in stock</span>
-            <input
-              type="number"
-              className="input mt-1"
-              min={0}
-              value={form.qtyInStock}
-              onChange={(e) => update("qtyInStock", Number(e.target.value))}
-            />
-          </label>
+                <label>
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">Unit (UN, CX, KG, MT…)</span>
+                  <input
+                    className="input mt-1"
+                    value={form.unit}
+                    onChange={(e) => update("unit", e.target.value)}
+                    maxLength={8}
+                  />
+                </label>
+                <label>
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">Qty in stock</span>
+                  <input
+                    type="number"
+                    className="input mt-1"
+                    min={0}
+                    value={form.qtyInStock}
+                    onChange={(e) => update("qtyInStock", Number(e.target.value))}
+                  />
+                </label>
 
-          <label>
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Min stock level (optional)</span>
-            <input
-              type="number"
-              className="input mt-1"
-              min={0}
-              value={form.minStockLevel ?? ""}
-              onChange={(e) =>
-                update("minStockLevel", e.target.value === "" ? undefined : Number(e.target.value))
-              }
-            />
-          </label>
-          <label>
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Location</span>
-            <input
-              className="input mt-1"
-              value={form.location ?? ""}
-              onChange={(e) => update("location", e.target.value)}
-              placeholder="Cabinet A · Drawer 1"
-              maxLength={140}
-            />
-          </label>
+                <label>
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">Min stock level (optional)</span>
+                  <input
+                    type="number"
+                    className="input mt-1"
+                    min={0}
+                    value={form.minStockLevel ?? ""}
+                    onChange={(e) =>
+                      update("minStockLevel", e.target.value === "" ? undefined : Number(e.target.value))
+                    }
+                  />
+                </label>
+                <label>
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">Location</span>
+                  <input
+                    className="input mt-1"
+                    value={form.location ?? ""}
+                    onChange={(e) => update("location", e.target.value)}
+                    placeholder="Cabinet A · Drawer 1"
+                    maxLength={140}
+                  />
+                </label>
 
-          <label className="sm:col-span-1">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">QR code ID (auto)</span>
-            <input
-              className="input mt-1 font-mono"
-              value={form.qrCodeId ?? ""}
-              onChange={(e) => update("qrCodeId", e.target.value)}
-              maxLength={64}
-            />
-          </label>
-          <label className="sm:col-span-1">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">NFC tag ID (optional / future)</span>
-            <input
-              className="input mt-1 font-mono"
-              value={form.nfcTagId ?? ""}
-              onChange={(e) => update("nfcTagId", e.target.value)}
-              placeholder="Leave blank for now"
-              maxLength={64}
-            />
-          </label>
+                <label className="sm:col-span-1">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">QR code ID (auto)</span>
+                  <input
+                    className="input mt-1 font-mono"
+                    value={form.qrCodeId ?? ""}
+                    onChange={(e) => update("qrCodeId", e.target.value)}
+                    maxLength={64}
+                  />
+                </label>
+                <label className="sm:col-span-1">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">NFC tag ID (optional / future)</span>
+                  <input
+                    className="input mt-1 font-mono"
+                    value={form.nfcTagId ?? ""}
+                    onChange={(e) => update("nfcTagId", e.target.value)}
+                    placeholder="Leave blank for now"
+                    maxLength={64}
+                  />
+                </label>
+              </div>
+
+              {error ? (
+                <p className="mt-3 text-xs text-[color:var(--color-p1)]">{error}</p>
+              ) : null}
+            </>
+          ) : savedItem ? (
+            <div className="mt-2">
+              <StockQrCodeView item={savedItem} mode="inlineCard" />
+            </div>
+          ) : null}
         </div>
 
-        {error ? (
-          <p className="mt-3 text-xs text-[color:var(--color-p1)]">{error}</p>
-        ) : null}
-
         <DialogFooter className="mt-5">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className={buttonVariants({ variant: "ghost" })}
-          >
-            Cancel
-          </button>
-          {!isEdit ? (
-            <button
-              type="button"
-              onClick={() => handleSave(true)}
-              className={buttonVariants({ variant: "secondary" })}
-            >
-              <Repeat2 className="size-4" /> Save & another
-            </button>
-          ) : null}
-          <Button onClick={() => handleSave(false)}>
-            {isEdit ? <><Edit2 className="size-4" /> Save changes</> : <><Plus className="size-4" /> Save item</>}
-          </Button>
+          {mode === "form" ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className={buttonVariants({ variant: "ghost" })}
+              >
+                Cancel
+              </button>
+              {!isEdit ? (
+                <button
+                  type="button"
+                  onClick={() => handleSave(true)}
+                  className={buttonVariants({ variant: "secondary" })}
+                >
+                  <Repeat2 className="size-4" /> Save &amp; another
+                </button>
+              ) : null}
+              <Button onClick={() => handleSave(false)}>
+                {isEdit ? <><Edit2 className="size-4" /> Save changes</> : <><Plus className="size-4" /> Save item</>}
+              </Button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  resetForNext();
+                  setMode("form");
+                  setSavedItem(null);
+                }}
+                className={buttonVariants({ variant: "secondary" })}
+              >
+                <PackagePlus className="size-4" /> Register another
+              </button>
+              <Button onClick={() => onOpenChange(false)}>
+                <Check className="size-4" /> Done
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

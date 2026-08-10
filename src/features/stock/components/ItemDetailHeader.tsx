@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react";
-import { Download, Printer, AlertTriangle, Edit2, ToggleLeft } from "lucide-react";
+import { Edit2, AlertTriangle, ToggleLeft } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { StockItem } from "../types";
-import { buildItemDeepLink, generateQrDataUrl, triggerPrintSticker } from "../lib/qr";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useStockStore } from "../store";
+import { StockQrCodeView } from "./StockQrCodeView";
 
 export function ItemDetailHeader({
   item,
@@ -22,45 +20,6 @@ export function ItemDetailHeader({
   onEdit?: () => void;
 }) {
   const markInactive = useStockStore((s) => s.markItemInactive);
-  const [qrOpen, setQrOpen] = useState(false);
-  const [qrData, setQrData] = useState<string | null>(null);
-  const [qrLoading, setQrLoading] = useState(false);
-  const [qrDeeplink, setQrDeeplink] = useState<string>(buildItemDeepLink(item.id));
-
-  useEffect(() => {
-    setQrDeeplink(buildItemDeepLink(item.id));
-    setQrData(null);
-  }, [item.id]);
-
-  async function handleOpenQr() {
-    if (qrData) {
-      setQrOpen(true);
-      return;
-    }
-    try {
-      setQrLoading(true);
-      const data = await generateQrDataUrl(qrDeeplink, 600);
-      setQrData(data);
-      setQrOpen(true);
-    } finally {
-      setQrLoading(false);
-    }
-  }
-
-  function handleDownload() {
-    if (!qrData) return;
-    const a = document.createElement("a");
-    a.href = qrData;
-    a.download = `qrcode-${item.sku}-${item.id}.png`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
-
-  function handlePrint() {
-    if (!qrData) return;
-    triggerPrintSticker(item, qrData);
-  }
 
   return (
     <>
@@ -124,9 +83,7 @@ export function ItemDetailHeader({
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button onClick={handleOpenQr} variant="secondary">
-                <Printer className="size-4" /> {qrLoading ? "Generating QR…" : "QR & print sticker"}
-              </Button>
+              <StockQrCodeView item={item} />
               <button
                 type="button"
                 onClick={onEdit}
@@ -156,37 +113,6 @@ export function ItemDetailHeader({
             </p>
         </div>
       </div>
-
-      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>QR code sticker — {item.sku}</DialogTitle>
-            <DialogDescription>
-              Scan this QR from any mobile browser to jump directly to this item.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col items-center text-center gap-3 mt-1">
-            {qrLoading ? (
-              <div className="size-[320px] grid place-items-center border border-dashed border-border rounded-lg">
-                <p className="text-xs text-muted-foreground">Generating QR…</p>
-              </div>
-            ) : (
-              qrData && <img src={qrData} alt={`QR ${item.sku}`} className="size-[320px] max-w-full rounded-lg border border-border bg-white p-2" />
-            )}
-            <p className="text-xs text-muted-foreground break-all px-4">{qrDeeplink}</p>
-          </div>
-
-          <DialogFooter>
-            <Button variant="secondary" onClick={handleDownload} disabled={!qrData}>
-              <Download className="size-4" /> Download PNG
-            </Button>
-            <Button onClick={handlePrint} disabled={!qrData}>
-              <Printer className="size-4" /> Print sticker (58mm)
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
