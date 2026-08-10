@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
 
 export type CameraFacingMode = "environment" | "user";
 
@@ -12,75 +11,214 @@ export interface QrScannerState {
   stop: () => Promise<void>;
   isSupported: boolean;
   hasPermission: boolean | "unknown";
+  scanFromFile: (file: File) => Promise<string | null>;
+  videoEl: HTMLVideoElement | null;
+  canFileFallback: boolean;
 }
 
-const DEFAULT_ELEMENT_ID = "pmtms-qr-reader";
+export interface QrScannerOptions {
+  fps?: number;
+  qrboxSizePx?: number;
+}
 
-const START_DEBUG = false;
-
-function debugLog(...args: unknown[]) {
-  if (START_DEBUG) {
+const VERBOSE = false;
+function debug(...args: unknown[]) {
+  if (VERBOSE) {
     // eslint-disable-next-line no-console
-    console.log("[pmtms:scanner]", ...args);
+    console.log("[pmtms:qr-native]", ...args);
+  }
+}
+
+function supportsBarcodeDetector(): boolean {
+  return typeof window !== "undefined" && "BarcodeDetector" in (window as unknown as Record<string, unknown>);
+}
+
+function supportsGetUserMedia(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof navigator !== "undefined" &&
+    !!navigator.mediaDevices &&
+    typeof navigator.mediaDevices.getUserMedia === "function"
+  );
+}
+
+function fileToImageBitmap(file: File): Promise<ImageBitmap> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      createImageBitmap(img)
+        .then((bmp) => {
+          URL.revokeObjectURL(url);
+          resolve(bmp);
+        })
+        .catch(reject);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load image"));
+    };
+    img.crossOrigin = "anonymous";
+    img.src = url;
+  });
+}
+
+async function qrDetectViaBarcodeDetector(
+  image: ImageBitmap | HTMLCanvasElement | HTMLVideoElement,
+  formats = ["qr_code"],
+): Promise<string | null> {
+  if (!supportsBarcodeDetector()) return null;
+  try {
+    const Detector = (window as unknown as { BarcodeDetector: new (opts?: { formats: string[] }) => { detect: (img: unknown) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector;
+    const detector = new Detector({ formats });
+    const codes = await detector.detect(image);
+    if (codes && codes.length) {
+      return codes[0].rawValue;
+    }
+    return null;
+  } catch (e) {
+    debug("BarcodeDetector.detect error:", e);
+    return null;
   }
 }
 
 export function useQrScanner(
-  elementId: string = DEFAULT_ELEMENT_ID,
-  options?: { fps?: number; qrbox?: number },
+  videoElementId: string,
+  options: QrScannerOptions = {},
 ): QrScannerState {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const isRunningRef = useRef(false);
+  const { fps = 10, qrboxSizePx = 260 } = options;
+
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
+  const canvasElRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const lastDetectAtRef = useRef(0);
+  const isScanningRef = useRef(false);
   const lastStartTsRef = useRef(0);
-  const [status, setStatus] = useState<"idle" | "starting" | "running" | "stopped" | "error">("idle");
+
+  const [status, setStatus] = useState<QrScannerState["status"]>("idle");
   const [error, setError] = useState<string | null>(null);
   const [detected, setDetected] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | "unknown">("unknown");
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+  const [canFileFallback] = useState<boolean>(() => supportsBarcodeDetector());
 
-  const isSupported =
-    typeof window !== "undefined" &&
-    typeof navigator !== "undefined" &&
-    !!navigator.mediaDevices &&
-    typeof navigator.mediaDevices.getUserMedia === "function";
+  const isSupported = supportsGetUserMedia();
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
+    let container: HTMLElement | null = null;
+    try {
+      container = document.getElementById(videoElementId);
+    } catch {
+      container = null;
+    }
+    if (!container) return;
+
+    let v = container.querySelector<HTMLVideoElement>("video");
+    if (!v) {
+      v = document.createElement("video");
+      v.setAttribute("autoplay", "");
+      v.setAttribute("muted", "");
+      v.setAttribute("playsinline", "");
+      v.setAttribute("webkit-playsinline", "");
+      v.style.width = "100%";
+      v.style.height = "100%";
+      v.style.objectFit = "cover";
+      v.style.background = "#000";
+      container.appendChild(v);
+    }
+    let cv = container.querySelector<HTMLCanvasElement>("canvas");
+    if (!cv) {
+      cv = document.createElement("canvas");
+      cv.style.position = "absolute";
+      cv.style.left = "-10000px";
+      cv.style.width = "1px";
+      cv.style.height = "1px";
+      cv.style.opacity = "0";
+      cv.style.pointerEvents = "none";
+      cv.tabIndex = -1;
+      container.appendChild(cv);
+    }
+    videoElRef.current = v;
+    canvasElRef.current = cv;
+    setVideoEl(v);
     return () => {
-      if (scannerRef.current && isRunningRef.current) {
-        scannerRef.current.stop().catch(() => undefined);
+      cleanupStream();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoElementId]);
+
+  function cleanupStream() {
+    isScanningRef.current = false;
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    if (streamRef.current) {
+      try {
+        const s = streamRef.current;
+        s.getTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {
+            // ignore
+          }
+        });
+      } catch {
+        // ignore
       }
-      if (scannerRef.current) {
-        try {
-          scannerRef.current.clear();
-        } catch {
-          // ignore
+      streamRef.current = null;
+    }
+    if (videoElRef.current) {
+      try {
+        videoElRef.current.srcObject = null;
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  async function detectLoopFrame(intervalMs: number, qrboxPx: number): Promise<void> {
+    const video = videoElRef.current;
+    const canvas = canvasElRef.current;
+    if (!video || !canvas || !isScanningRef.current) return;
+    try {
+      const now = performance.now();
+      if (now - lastDetectAtRef.current >= intervalMs && video.readyState >= 2) {
+        lastDetectAtRef.current = now;
+        const vw = video.videoWidth || 0;
+        const vh = video.videoHeight || 0;
+        if (vw && vh) {
+          const minSide = Math.min(vw, vh);
+          const boxSize = Math.round(Math.min(minSide, qrboxPx * (minSide / 480)));
+          const sx = Math.round((vw - boxSize) / 2);
+          const sy = Math.round((vh - boxSize) / 2);
+          canvas.width = boxSize;
+          canvas.height = boxSize;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          if (ctx) {
+            ctx.drawImage(video, sx, sy, boxSize, boxSize, 0, 0, boxSize, boxSize);
+            const result = await qrDetectViaBarcodeDetector(canvas);
+            if (result) {
+              setDetected((prev) => (prev === result ? prev : result));
+            }
+          }
         }
       }
-    };
-  }, [elementId]);
-
-  function buildScanOptions() {
-    const w = options?.qrbox ?? 260;
-    const h = options?.qrbox ?? 260;
-    return {
-      fps: options?.fps ?? 10,
-      qrbox: { width: w, height: h },
-      aspectRatio: 1.333,
-      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-      rememberLastUsedCamera: false,
-      showTorchButtonIfSupported: true,
-      showZoomSliderIfSupported: true,
-    };
+    } catch (e) {
+      debug("frame detect error:", e);
+    }
+    if (isScanningRef.current) {
+      rafIdRef.current = requestAnimationFrame(() => {
+        void detectLoopFrame(intervalMs, qrboxPx);
+      });
+    }
   }
 
   async function start(facingMode: CameraFacingMode = "environment") {
-    if (!isSupported) {
-      const msg = "Camera API not available on this browser/device. Try Chrome, Edge or Safari 17.4+.";
-      setError(msg);
-      setStatus("error");
-      throw new Error(msg);
-    }
     const now = Date.now();
-    if (now - lastStartTsRef.current < 750 && isRunningRef.current) {
+    if (now - lastStartTsRef.current < 750 && isScanningRef.current) {
       setStatus("running");
       return;
     }
@@ -90,105 +228,78 @@ export function useQrScanner(
       setError(null);
       setDetected(null);
 
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode(elementId, { verbose: START_DEBUG });
-      } else if (isRunningRef.current) {
-        setStatus("running");
-        return;
+      if (!isSupported) {
+        throw new Error("Camera not supported on this browser. Try Chrome, Edge, or Safari 17.4+.");
+      }
+      if (!videoElRef.current) {
+        throw new Error("Video element not ready. Please refresh the page.");
+      }
+      if (!supportsBarcodeDetector()) {
+        throw new Error(
+          "Barcode detector not supported on this browser. Chrome Android 83+, Safari iOS 17.4+ required. Use 'Capture photo' fallback below.",
+        );
       }
 
-      const opts = buildScanOptions();
-      const successCb = (decodedText: string) => {
-        setDetected((prev) => (prev === decodedText ? prev : decodedText));
+      cleanupStream();
+
+      const idealWidth = 1280;
+      const idealHeight = 720;
+      const constraints: MediaStreamConstraints = {
+        audio: false,
+        video: {
+          facingMode: { ideal: facingMode },
+          width: { ideal: idealWidth },
+          height: { ideal: idealHeight },
+          frameRate: { ideal: 30, max: 60 },
+        },
       };
-      const errCb = () => undefined;
 
-      const attempts: Array<{ label: string; exec: () => Promise<void> }> = [
-        {
-          label: "v3: Html5Qrcode.start with cameraIdConstraints + videoConfig inline",
-          exec: () => {
-            debugLog("attempt 1: facingMode ideal + videoConstraints inside config object");
-            return (scannerRef.current as Html5Qrcode).start(
-              { facingMode: { ideal: facingMode } } as any,
-              {
-                ...opts,
-                videoConstraints: {
-                  facingMode: { ideal: facingMode },
-                  width: { ideal: 1280 },
-                  height: { ideal: 720 },
-                  aspectRatio: { ideal: 16 / 9 },
-                  frameRate: { ideal: 30, max: 60 },
-                },
-              } as any,
-              successCb,
-              errCb,
-            );
-          },
-        },
-        {
-          label: "v2: Html5Qrcode.start with plain facingMode string (legacy)",
-          exec: () => {
-            debugLog("attempt 2: start({facingMode:'env'}), opts only");
-            return (scannerRef.current as Html5Qrcode).start(
-              { facingMode } as any,
-              opts as any,
-              successCb,
-              errCb,
-            );
-          },
-        },
-        {
-          label: "v1: Html5Qrcode.start request permissions and auto pick first rear",
-          exec: () => {
-            debugLog("attempt 3: facingMode exact = environment");
-            return (scannerRef.current as Html5Qrcode).start(
-              { facingMode: { exact: facingMode } } as any,
-              opts as any,
-              successCb,
-              errCb,
-            );
-          },
-        },
-      ];
-
-      let lastErr: unknown = null;
-      for (let i = 0; i < attempts.length; i++) {
-        try {
-          debugLog(`[${i + 1}/${attempts.length}] ${attempts[i].label}`);
-          await attempts[i].exec();
-          debugLog(`[${i + 1}/${attempts.length}] OK — started`);
-          lastErr = null;
-          break;
-        } catch (e) {
-          debugLog(`[${i + 1}/${attempts.length}] FAILED:`, e instanceof Error ? e.message : String(e));
-          lastErr = e;
-        }
-      }
-      if (lastErr) {
-        debugLog("All 3 attempts failed. Last err:", lastErr);
-        throw lastErr;
-      }
-
-      isRunningRef.current = true;
+      debug("requesting media stream:", constraints);
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
       setHasPermission(true);
+
+      const video = videoElRef.current;
+      video.srcObject = stream;
+      try {
+        video.setAttribute("autoplay", "");
+        video.setAttribute("muted", "");
+        video.setAttribute("playsinline", "");
+        video.setAttribute("webkit-playsinline", "");
+      } catch {
+        // ignore
+      }
+      debug("calling play() on video");
+      await video.play();
+      debug("video play OK");
+      isScanningRef.current = true;
+      const intervalMs = 1000 / (fps || 10);
       setStatus("running");
+      rafIdRef.current = requestAnimationFrame(() => {
+        void detectLoopFrame(intervalMs, qrboxSizePx);
+      });
     } catch (err) {
-      isRunningRef.current = false;
+      cleanupStream();
       const msg =
         err instanceof Error
-          ? err.message.toLowerCase().includes("permission")
-            ? "Camera permission denied. Allow camera access in your browser settings and refresh."
-            : err.message.toLowerCase().includes("requested device") ||
-                err.message.toLowerCase().includes("no camera") ||
-                err.message.toLowerCase().includes("constraint") ||
-                err.message.toLowerCase().includes("cannot read")
-              ? `Camera start failed (${facingMode}). Try flipping camera or close other apps using camera.\n\n${err.message}`
+          ? err.message.toLowerCase().includes("permission") ||
+              err.message.toLowerCase().includes("denied") ||
+              err.message.toLowerCase().includes("notallowed")
+            ? "Camera permission denied. Open browser settings → Site settings → Camera → Allow, then refresh."
+            : err.message.toLowerCase().includes("notfound") ||
+                err.message.toLowerCase().includes("device") ||
+                err.message.toLowerCase().includes("overconstrained")
+              ? `Camera not available (${facingMode}). Close other apps using camera and retry, or use the 'Capture photo' fallback.\n\n${err.message}`
               : err.message
           : String(err);
-      debugLog("final error =>", msg);
+      debug("start failed:", msg);
       setError(msg);
       setHasPermission(
-        err instanceof Error && err.message.toLowerCase().includes("permission") ? false : "unknown",
+        err instanceof Error &&
+        (err.name === "NotAllowedError" ||
+          /permission|denied|notallowed/i.test(err.message))
+          ? false
+          : "unknown",
       );
       setStatus("error");
       throw err;
@@ -196,28 +307,31 @@ export function useQrScanner(
   }
 
   async function stop() {
-    if (!scannerRef.current) {
-      setStatus("stopped");
-      return;
-    }
-    try {
-      await scannerRef.current.stop();
-    } catch {
-      // ignore
-    } finally {
-      try {
-        scannerRef.current.clear();
-      } catch {
-        // ignore
-      }
-      isRunningRef.current = false;
-      setStatus("stopped");
-    }
+    cleanupStream();
+    setStatus("stopped");
   }
 
   function clear() {
     setDetected(null);
     setError(null);
+  }
+
+  async function scanFromFile(file: File): Promise<string | null> {
+    try {
+      setError(null);
+      const bmp = await fileToImageBitmap(file);
+      const result = await qrDetectViaBarcodeDetector(bmp);
+      if (result) {
+        setDetected(result);
+      } else {
+        setError("Could not find a QR code in the photo. Try again with better lighting.");
+      }
+      return result;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
+      return null;
+    }
   }
 
   return {
@@ -229,6 +343,9 @@ export function useQrScanner(
     stop,
     isSupported,
     hasPermission,
+    scanFromFile,
+    videoEl,
+    canFileFallback,
   };
 }
 

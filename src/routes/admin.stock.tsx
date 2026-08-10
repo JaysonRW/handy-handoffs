@@ -13,6 +13,7 @@ import {
 import { StockItemsList, useFilterIndexSets } from "@/features/stock/components/StockItemsList";
 import { NewItemDialog } from "@/features/stock/components/NewItemDialog";
 import { useStockStore } from "@/features/stock/store";
+import type { StockItem } from "@/features/stock/types";
 
 const ADMIN_ACTOR_ID = "u_admin";
 type StockSearch = { filter?: StockFilterState["status"] };
@@ -75,11 +76,12 @@ function AdminStockIndex() {
   }
 
   const [newOpen, setNewOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<StockItem | null>(null);
 
   return (
     <AdminShell
       title="Stock control"
-      subtitle="Tools, equipment and consumables. Scan QR to jump to an item."
+      subtitle="Tools, equipment and consumables. Scan QR to jump to an item. Tap a card to edit, the arrow → for full details."
       actions={
         <ShellActionsMenu
           menuLabel="Stock actions"
@@ -135,10 +137,19 @@ function AdminStockIndex() {
       </div>
 
       <div className="mt-6">
-        <StockItemsList filters={filters} />
+        <StockItemsList filters={filters} onOpenEdit={(it) => setEditTarget(it)} />
       </div>
 
       <NewItemDialog open={newOpen} onOpenChange={setNewOpen} actorId={ADMIN_ACTOR_ID} />
+      <NewItemDialog
+        open={!!editTarget}
+        onOpenChange={(open) => {
+          if (!open) setEditTarget(null);
+        }}
+        actorId={ADMIN_ACTOR_ID}
+        editTarget={editTarget}
+        onEditSaved={() => setEditTarget(null)}
+      />
     </AdminShell>
   );
 }

@@ -2,8 +2,15 @@ import { useMemo } from "react";
 import { useStockStore, lowStockItems, overdueLoans, openLoansForItem } from "../store";
 import { StockItemCard } from "./StockItemCard";
 import type { StockFilterState } from "./StockFilters";
+import type { StockItem } from "../types";
 
-export function StockItemsList({ filters }: { filters: StockFilterState }) {
+export function StockItemsList({
+  filters,
+  onOpenEdit,
+}: {
+  filters: StockFilterState;
+  onOpenEdit?: (item: StockItem) => void;
+}) {
   const items = useStockStore((s) => s.items);
   const loans = useStockStore((s) => s.loans);
   const lastError = useStockStore((s) => s.lastError);
@@ -81,6 +88,7 @@ export function StockItemsList({ filters }: { filters: StockFilterState }) {
           openLoans={openLoansForItem(loans, item.id)}
           isLowStock={lowIds.has(item.id)}
           isOverdue={overdueIds.has(item.id)}
+          onOpenEdit={onOpenEdit}
         />
       ))}
     </div>
