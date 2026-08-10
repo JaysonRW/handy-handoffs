@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Package, PackageOpen, AlertTriangle, UserCheck, ClockAlert } from "lucide-react";
+import { PackageOpen, AlertTriangle, UserCheck, ClockAlert } from "lucide-react";
 import type { StockItem, StockLoan } from "../types";
 
 export function StockItemCard({
@@ -23,20 +23,7 @@ export function StockItemCard({
       to={`/admin/stock/${item.id}` as any}
       className="surface-card p-4 hover:border-primary/40 hover:bg-surface-2 transition focus-ring group rounded-lg"
     >
-      <div className="flex items-start gap-3">
-        {item.photoUrl ? (
-          <img
-            src={item.photoUrl}
-            alt=""
-            className="size-14 rounded-md object-cover border border-border shrink-0"
-          />
-        ) : (
-          <div className="size-14 rounded-md border border-dashed border-border grid place-items-center shrink-0">
-            <Package className="size-5 text-muted-foreground" />
-          </div>
-        )}
-
-        <div className="min-w-0 flex-1">
+      <div className="min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-sm font-semibold truncate">{item.name}</p>
@@ -107,7 +94,6 @@ export function StockItemCard({
               ))}
             </ul>
           ) : null}
-        </div>
       </div>
     </Link>
   );

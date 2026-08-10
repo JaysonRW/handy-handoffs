@@ -206,17 +206,6 @@ export function NewItemDialog({
             />
           </label>
 
-          <label className="sm:col-span-2">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">Photo URL (optional)</span>
-            <input
-              className="input mt-1"
-              value={form.photoUrl ?? ""}
-              onChange={(e) => update("photoUrl", e.target.value)}
-              placeholder="https://… (public image)"
-              maxLength={260}
-            />
-          </label>
-
           <label className="sm:col-span-1">
             <span className="text-xs uppercase tracking-wider text-muted-foreground">QR code ID (auto)</span>
             <input

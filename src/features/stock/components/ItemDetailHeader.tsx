@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Printer, Package, AlertTriangle, Edit2, ToggleLeft } from "lucide-react";
+import { Download, Printer, AlertTriangle, Edit2, ToggleLeft } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { StockItem } from "../types";
 import { buildItemDeepLink, generateQrDataUrl, triggerPrintSticker } from "../lib/qr";
@@ -63,20 +63,7 @@ export function ItemDetailHeader({
   return (
     <>
       <div className="surface-card p-5 rounded-lg">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-          {item.photoUrl ? (
-            <img
-              src={item.photoUrl}
-              alt=""
-              className="size-28 rounded-md border border-border object-cover shrink-0 mx-auto sm:mx-0"
-            />
-          ) : (
-            <div className="size-28 rounded-md border border-dashed border-border grid place-items-center bg-surface-2/40 shrink-0 mx-auto sm:mx-0">
-              <Package className="size-10 text-muted-foreground" />
-            </div>
-          )}
-
-          <div className="flex-1 min-w-0">
+        <div className="min-w-0">
             <div className="flex flex-wrap items-start gap-2 justify-between">
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-widest text-muted-foreground">
@@ -165,7 +152,6 @@ export function ItemDetailHeader({
                 </>
               ) : null}
             </p>
-          </div>
         </div>
       </div>
 
