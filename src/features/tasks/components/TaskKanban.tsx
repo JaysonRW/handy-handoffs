@@ -61,13 +61,6 @@ export function TaskKanban({
             emptyText: "No tasks assigned to Caretaker.",
             list: tasks.filter((task) => getAdminAssigneeBucket(task) === "caretaker"),
           },
-          {
-            key: "cleaner",
-            title: "Cleaner · Assigned tasks",
-            tone: "border-success/40",
-            emptyText: "No tasks assigned to Cleaner.",
-            list: tasks.filter((task) => getAdminAssigneeBucket(task) === "cleaner"),
-          },
         ]
       : [
           {
@@ -97,8 +90,12 @@ export function TaskKanban({
   const canQuick = !!actorId;
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {cols.map((c) => {
+    <div
+      className={cn(
+        "grid gap-4",
+        layout === "admin_assignee_role" ? "md:grid-cols-2" : "md:grid-cols-3",
+      )}
+    >  {cols.map((c) => {
         const list = c.list;
         const agingCount = countTasksOlderThanSevenDays(list);
         return (
