@@ -176,7 +176,7 @@ export function TaskDetail({
         <div className="surface-card p-5">
           <div className="flex flex-wrap items-center gap-2">
             <PriorityBadge priority={task.priority} />
-            <StatusBadge status={task.status} />
+            {actorRole !== "CARETAKER" && <StatusBadge status={task.status} />}
             <span className="chip">{block?.name} · Flat {getFlatLabel(task.blockId, task.flatId)}</span>
             {task.problemCategory && <span className="chip">{task.problemCategory}</span>}
             {task.complaintCategory && <span className="chip">{task.complaintCategory}</span>}
@@ -350,7 +350,7 @@ export function TaskDetail({
             </div>
           )}
 
-          {canTransition && actorRole !== "CLEANER" && task.status !== "NEW" && (
+          {canTransition && actorRole !== "CLEANER" && actorRole !== "CARETAKER" && task.status !== "NEW" && (
             <div className="pt-2 border-t border-border flex flex-col gap-2">
               <span className="text-xs text-muted-foreground">Update status</span>
               <div className="grid grid-cols-2 gap-1">
@@ -367,13 +367,13 @@ export function TaskDetail({
               </div>
             </div>
           )}
-          {canTransition && canStartAssignedTasks(actorRole) && task.status === "NEW" && task.assigneeId === actorId && (
+          {canTransition && canStartAssignedTasks(actorRole) && actorRole !== "CARETAKER" && task.status === "NEW" && task.assigneeId === actorId && (
             <button
               onClick={() => setDraftStatus("DOING")}
               className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-semibold focus-ring hover:bg-primary/90"
             >Start work</button>
           )}
-          {canTransition && actorRole === "CLEANER" && task.status !== "DONE" && (
+          {canTransition && (actorRole === "CLEANER" || actorRole === "CARETAKER") && task.status !== "DONE" && (
             <button
               onClick={() => setDraftStatus("DONE")}
               className="rounded-md border border-success/40 bg-success/15 text-success hover:bg-success/25 px-3 py-2 text-sm font-semibold focus-ring"

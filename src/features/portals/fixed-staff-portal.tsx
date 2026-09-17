@@ -49,6 +49,7 @@ export function FixedStaffHome({ userId, basePath }: FixedPortalProps) {
   const myActive = tasks.filter((t) => t.assigneeId === userId && t.status !== "DONE");
   const isCleanerPortal = user.role === "CLEANER";
   const isCaretakerPortal = user.role === "CARETAKER";
+  const hideStatusBadge = isCleanerPortal || isCaretakerPortal;
   const checklistDone = useChecklistStore((s) => s.getProgress().done);
   const checklistTotal = useChecklistStore((s) => s.getProgress().total);
 
@@ -116,7 +117,7 @@ export function FixedStaffHome({ userId, basePath }: FixedPortalProps) {
                   task={t}
                   href={`${basePath}/tasks/${t.id}`}
                   compact
-                  hideStatusBadge={isCleanerPortal}
+                  hideStatusBadge={hideStatusBadge}
                 />
               ))}
             </div>
@@ -135,11 +136,13 @@ export function FixedStaffTasks({ userId, basePath }: FixedPortalProps) {
     [allTasks, userId],
   );
   const tasks = useMemo(() => {
-    if (user.role === "CLEANER") {
+    if (user.role === "CLEANER" || user.role === "CARETAKER") {
       return visibleTasks.filter((t) => t.status !== "DONE");
     }
     return visibleTasks;
   }, [visibleTasks, user.role]);
+  const hideStatusBadge = user.role === "CLEANER" || user.role === "CARETAKER";
+  const showFilters = user.role !== "CLEANER" && user.role !== "CARETAKER";
   const [filters, setFilters] = useTaskFiltersState();
   const filtered = useFilteredTasks(tasks, filters);
 
@@ -148,19 +151,19 @@ export function FixedStaffTasks({ userId, basePath }: FixedPortalProps) {
       userId={userId}
       title="My tasks"
       subtitle={`${filtered.length} ${
-        user.role === "CLEANER" ? "pending" : `of ${visibleTasks.length}`
+        user.role === "CLEANER" || user.role === "CARETAKER" ? "pending" : `of ${visibleTasks.length}`
       } · ${user.role.toLowerCase()}`}
       actions={<SyncNowButton taskIds={visibleTasks.map((task) => task.id)} />}
       portalBasePath={basePath}
       extraTabs={checklistExtraTabsFor(userId, basePath)}
     >
       <div className="max-w-3xl mx-auto px-4 pt-4 flex flex-col gap-3">
-        {user.role !== "CLEANER" && (
+        {showFilters && (
           <TaskFiltersBar value={filters} onChange={setFilters} hideAssignee={false} />
         )}
         {filtered.length === 0 ? (
           <div className="surface-card p-8 text-center text-sm text-muted-foreground">
-            {user.role === "CLEANER"
+            {user.role === "CLEANER" || user.role === "CARETAKER"
               ? "No pending tasks. All caught up."
               : "No tasks match these filters."}
           </div>
@@ -171,7 +174,7 @@ export function FixedStaffTasks({ userId, basePath }: FixedPortalProps) {
                 key={t.id}
                 task={t}
                 href={`${basePath}/tasks/${t.id}`}
-                hideStatusBadge={user.role === "CLEANER"}
+                hideStatusBadge={hideStatusBadge}
               />
             ))}
           </div>
