@@ -1,6 +1,15 @@
 export type StockCategory = "TOOLS" | "CONSUMABLES" | "OTHER";
 export type MovementType = "IN" | "OUT" | "ADJUST";
 
+const SHELVES = ["A", "B", "C", "D", "E"] as const;
+const LEVELS = ["1", "2", "3", "4", "5"] as const;
+
+export const STOCK_LOCATIONS: string[] = SHELVES.flatMap((s) =>
+  LEVELS.map((l) => `${s}-${l}`),
+);
+
+export const STOCK_LOCATION_PLACEHOLDER = "";
+
 export interface StockItem {
   id: string;
   sku: string;

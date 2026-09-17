@@ -6,7 +6,7 @@ import { useStockStore } from "../store";
 import { nanoid } from "@/lib/id";
 import type { ItemDraft } from "../store";
 import type { StockCategory, StockItem } from "../types";
-import { DEFAULT_STOCK_UNIT } from "../types";
+import { DEFAULT_STOCK_UNIT, STOCK_LOCATIONS } from "../types";
 import { StockQrCodeView } from "./StockQrCodeView";
 
 export function NewItemDialog({
@@ -117,6 +117,10 @@ export function NewItemDialog({
     }
     if (!form.sku.trim()) {
       setError("SKU is required.");
+      return;
+    }
+    if (!form.location?.trim()) {
+      setError("Location is required. Select one of the available locations.");
       return;
     }
     const qty = Number(form.qtyInStock);
@@ -273,13 +277,24 @@ export function NewItemDialog({
 
                 <label>
                   <span className="text-xs uppercase tracking-wider text-muted-foreground">Location</span>
-                  <input
+                  <select
                     className="input mt-1"
+                    required
                     value={form.location ?? ""}
                     onChange={(e) => update("location", e.target.value)}
-                    placeholder="Cabinet A · Drawer 1"
-                    maxLength={140}
-                  />
+                  >
+                    <option value="">Selecione uma localização</option>
+                    {STOCK_LOCATIONS.map((loc) => (
+                      <option key={loc} value={loc}>{loc}</option>
+                    ))}
+                    {(() => {
+                      const existing = form.location?.trim();
+                      if (existing && !STOCK_LOCATIONS.includes(existing)) {
+                        return <option value={existing}>{existing} (legado)</option>;
+                      }
+                      return null;
+                    })()}
+                  </select>
                 </label>
 
                 <label className="sm:col-span-1">
