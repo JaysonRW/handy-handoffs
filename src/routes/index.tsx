@@ -38,7 +38,7 @@ function Index() {
           </p>
         </section>
 
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           <Link
             to="/admin/login"
             className="surface-card group relative overflow-hidden p-6 transition hover:border-primary/50 hover:bg-surface-2 focus-ring"
@@ -80,28 +80,6 @@ function Index() {
             </ul>
             <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary">
               Open caretaker portal <ArrowRight className="size-4 transition group-hover:translate-x-1" />
-            </div>
-          </Link>
-
-          <Link
-            to="/cleaner"
-            className="surface-card group relative overflow-hidden p-6 transition hover:border-primary/50 hover:bg-surface-2 focus-ring"
-          >
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />
-            <div className="flex items-center gap-3">
-              <div className="size-12 grid place-items-center rounded-lg bg-success/15 text-success"><Wrench className="size-6" /></div>
-              <div>
-                <h2 className="text-lg font-bold">Cleaner portal</h2>
-                <p className="text-xs text-muted-foreground">Direct access only to tasks assigned to the cleaner</p>
-              </div>
-            </div>
-            <ul className="mt-5 text-sm text-muted-foreground space-y-1">
-              <li>· See only assigned tasks</li>
-              <li>· Update task progress and review flow</li>
-              <li>· No task creation in this portal</li>
-            </ul>
-            <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-              Open cleaner portal <ArrowRight className="size-4 transition group-hover:translate-x-1" />
             </div>
           </Link>
 
